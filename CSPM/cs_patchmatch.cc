@@ -46,10 +46,15 @@ void CSPatchMatch::PatchMatch(const int& iter_num,
   cout << "\t Patch Match" << endl;
   InitRandomPlane();
   for (int i = 0; i < iter_num; ++i) {
-    cout << "\t\t Iter: " << i;
+    cout << "\t\t Iter: " << i << endl;
     SpatialPropagation(i, plane_cost);
     ViewPropagation(plane_cost);
     PlaneRefinement(max_dis_ / 2.0, kMaxNorm_, kZStopThres_, plane_cost);
+#ifdef _DEBUG
+    //PlaneToDisp();
+    //imshow("iter_disp", dis_[kLeft]);
+    //waitKey(-1);
+#endif
   }
   PlaneToDisp();
   PostProcessing();
@@ -64,8 +69,8 @@ void CSPatchMatch::InitRandomPlane() {
   CV_Assert(plane_ != NULL);
   RNG rng;
   // paramter for gaussian distribution
-  const Vec3d norm_avg(0.0, 0.0, 0.0);
-  const Vec3d norm_std(1.0, 1.0, 1.0);
+  const double norm_avg = 0.0;
+  const double norm_std = 1.0;
   for (int v = 0; v < kViewNum; ++v) {
     for (int y = 0; y < hei_; ++y) {
       for (int x = 0; x < wid_; ++x) {
@@ -74,7 +79,8 @@ void CSPatchMatch::InitRandomPlane() {
           static_cast<double>(max_dis_));
         plane_[v][y][x].set_point(Point3d(x, y, rand_dis));
         Vec3d rand_norm(0.0, 0.0, 0.0);
-        rng.fill(rand_norm, RNG::NORMAL, norm_avg, norm_std);
+        rng.fill(rand_norm, RNG::NORMAL, norm_avg, 
+          norm_std);
         double denom = max(norm(rand_norm, NORM_L2), kDoubleEps);
         plane_[v][y][x].set_norm(rand_norm / denom);
         // udpate plane paramter
@@ -121,6 +127,7 @@ void CSPatchMatch::SpatialPropagation(const int& cur_iter,
       }
     }
     for (int y = y_st; y != y_ed; y += y_inc) {
+      cout << ".s.p";
       for (int x = x_st; x != x_ed; x += x_inc) {
         // x-axis neighbour
         const Plane& nx_plane = plane_[v][y][x - x_inc];
@@ -140,6 +147,7 @@ void CSPatchMatch::SpatialPropagation(const int& cur_iter,
         }
       }
     }
+    cout << endl;
   } // end for view
 }
 
@@ -161,6 +169,7 @@ void CSPatchMatch::ViewPropagation(const IPlaneCost* plane_cost) {
     int other_view = 1 - v;
     // iterate all other view pixels
     for (int y = 0; y < hei_; ++y) {
+      cout << ".v.p";
       for (int x = 0; x < wid_; ++x) {
         Vec3d param = plane_[other_view][y][x].param();
         double disp = param[0] * x + param[1] * y + param[2];
@@ -181,6 +190,7 @@ void CSPatchMatch::ViewPropagation(const IPlaneCost* plane_cost) {
         }
       }
     }
+    cout << endl;
   }
 }
 
@@ -206,10 +216,9 @@ void CSPatchMatch::PlaneRefinement(const double& z_max,
   double n_iter = n_max;
   RNG rng;
   while (z_iter >= z_thres) {
-    Vec3d n_low(-n_iter, -n_iter, -n_iter);
-    Vec3d n_high(n_iter, n_iter, n_iter);
     for (RefView v = kLeft; v <= kRight; v = RefView(v + 1)) {
       for (int y = 0; y < hei_; ++y) {
+        cout << ".p.f";
         for (int x = 0; x < wid_; ++x) {
           Plane disturb_plane;
           Plane org_plane = plane_[v][y][x];
@@ -223,7 +232,7 @@ void CSPatchMatch::PlaneRefinement(const double& z_max,
            );
           // distrub norm
           Vec3d delta_norm(0.0, 0.0, 0.0);
-          rng.fill(delta_norm, RNG::UNIFORM, n_low, n_high);
+          rng.fill(delta_norm, RNG::UNIFORM, -n_iter, n_iter);
           Vec3d disturb_norm = org_norm + delta_norm;
           double denom = max(norm(disturb_norm, NORM_L2),
             kDoubleEps);
@@ -242,11 +251,209 @@ void CSPatchMatch::PlaneRefinement(const double& z_max,
     }
     z_iter /= 2.0;
     n_iter /= 2.0;
+    cout << endl;
   }
 }
 
+void CSPatchMatch::LeftRightCheck(int** valid) {
+  cout << "\t\t\t left-right check" << endl;
+  const int imgSize = hei_ * wid_;
+  int* l_valid = valid[kLeft];
+  int* r_valid = valid[kRight];
+  for (int y = 0; y < hei_; y++) {
+    uchar* l_dis_data = dis_[kLeft].ptr<uchar>(y);
+    uchar* r_dis_data = dis_[kRight].ptr<uchar>(y);
+    for (int x = 0; x < wid_; x++) {
+      // check left image
+      double l_disp = l_dis_data[x] * 1.0 / dis_scale_;
+      // assert( ( x - lDep ) >= 0 && ( x - lDep ) < wid );
+      int r_loc = (x - static_cast<int>(l_disp) + wid_) % wid_;
+      double r_disp = r_dis_data[r_loc] * 1.0 / dis_scale_;
+      // disparity should not be zero
+      if (fabs(l_disp - r_disp) <= 1.0 && l_disp > 0) {
+        *l_valid = 1;
+      }
+      // check right image
+      r_disp = r_dis_data[x] / dis_scale_;
+      // assert( ( x + rDep ) >= 0 && ( x + rDep ) < wid );
+      int l_loc = (x + static_cast<int>(r_disp) + wid_) % wid_;
+      l_disp = l_dis_data[l_loc] / dis_scale_;
+      // disparity should not be zero
+      if (fabs(r_disp - l_disp) <= 1.0 && r_disp > 0) {
+        *r_valid = 1;
+      }
+      ++l_valid;
+      ++r_valid;
+    }
+  }
+}
+void CSPatchMatch::FillInvalid(int** valid) {
+  cout << "\t\t\t fill invalid pixel" << endl;
+  for (int v = kLeft; v <= kRight; v = RefView(v + 1)) {
+    int* cur_valid = valid[v];
+    for (int y = 0; y < hei_; y++) {
+      int* y_valid = valid[v] + y * wid_;
+      uchar* dis_data = dis_[v].ptr<uchar>(y);
+      for (int x = 0; x < wid_; x++) {
+        if (*cur_valid == 0) {
+          // find left first valid pixel
+          int l_first = x;
+          int l_find = 0;
+          while (l_first >= 0) {
+            if (y_valid[l_first]) {
+              l_find = 1;
+              break;
+            }
+            l_first--;
+          }
+          int r_find = 0;
+          // find right first valid pixel
+          int r_first = x;
+          while (r_first < wid_) {
+            if (y_valid[r_first]) {
+              r_find = 1;
+              break;
+            }
+            r_first++;
+          }
+          // set x's depth to the lowest one
+          if (l_find && r_find) {
+            double l_first_disp =
+              plane_[v][y][l_first].param().dot(Vec3d(x, y, 1.0));
+            double r_first_disp = 
+              plane_[v][y][r_first].param().dot(Vec3d(x, y, 1.0));
+            if (l_first_disp <= r_first_disp) {
+              l_first_disp *= dis_scale_;
+              dis_data[x] = static_cast<uchar>(
+                HandleBorder(static_cast<int>(l_first_disp), 256)
+               );
+            } else {
+              r_first_disp *= dis_scale_;
+              dis_data[x] = static_cast<uchar>(
+                HandleBorder(static_cast<int>(r_first_disp), 256)
+               );
+            }
+          } else if (l_find) {
+            double l_first_disp =
+              plane_[v][y][l_first].param().dot(Vec3d(x, y, 1.0));
+            l_first_disp *= dis_scale_;
+            dis_data[x] = static_cast<uchar>(
+              HandleBorder(static_cast<int>(l_first_disp), 256)
+             );
+          } else if (r_find) {
+            double r_first_disp =
+              plane_[v][y][r_first].param().dot(Vec3d(x, y, 1.0));
+            r_first_disp *= dis_scale_;
+            dis_data[x] = static_cast<uchar>(
+              HandleBorder(static_cast<int>(r_first_disp), 256)
+             );
+          } // end if l_find && r_find
+        } // end if cur_valid
+        cur_valid++;
+      }
+    }
+  } // end for each view
+}
+
+void CSPatchMatch::WeightedMedian(int** valid, 
+  const int wnd_size, const double gamma) {
+  int half_wnd = wnd_size / 2;
+  // init exp look-up table
+  double* lookup_exp = new double[1000];
+  for (int i = 0; i < 1000; ++i) {
+    lookup_exp[i] = exp(-i / gamma);
+  }
+  double* disp_hist = new double[256];
+
+  for (RefView v = kLeft; v <= kRight; v = RefView(v + 1)) {
+    // filter left
+    int* cur_valid = valid[v];
+    for (int y = 0; y < hei_; y++) {
+      uchar* l_dis_data = dis_[v].ptr<uchar>(y);
+      double* pL = img_[v].ptr<double>(y);
+      for (int x = 0; x < wid_; x++) {
+        if (*cur_valid == 0) {
+          // just filter invalid pixels
+          fill(disp_hist, disp_hist + 256, 0.0);
+          double sum_wgt = 0.0f;
+          // set disparity histogram by bilateral weight
+          for (int wy = -half_wnd; wy <= half_wnd; wy++) {
+            int qy = HandleBorder(y + wy, hei_);
+            // int* qLValid = lValid + qy * wid;
+            double* qL = img_[v].ptr<double>(qy);
+            uchar* q_dis_data = dis_[v].ptr<uchar>(qy);
+            for (int wx = -half_wnd; wx <= half_wnd; wx++) {
+              int qx = HandleBorder(x + wx, wid_);
+              // invalid pixel also used
+              // if( qLValid[ qx ] && wx != 0 && wy != 0 ) {
+              int q_disp = static_cast<int>(q_dis_data[qx]);
+              if (q_disp > 0) {
+                // double disWgt = wx * wx + wy * wy;
+                // disWgt = sqrt( disWgt );
+                double clr_diff =
+                  255 * fabs(pL[3 * x] - qL[3 * qx]) +
+                  255 * fabs(pL[3 * x + 1] - qL[3 * qx + 1]) +
+                  255 * fabs(pL[3 * x + 2] - qL[3 * qx + 2]);
+                // clrWgt = sqrt( clrWgt );
+                double wgt = lookup_exp[static_cast<int>(clr_diff)];
+                disp_hist[q_disp] += wgt;
+                sum_wgt += wgt;
+              }
+              // }
+            }
+          }
+          double median_wgt = sum_wgt / 2.0;
+          sum_wgt = 0.0;
+          int median_disp = 0;
+          for (int d = 0; d < 256; d++) {
+            sum_wgt += disp_hist[d];
+            if (sum_wgt >= median_wgt) {
+              median_disp = d;
+              break;
+            }
+          }
+          // set new disparity
+          l_dis_data[x] = median_disp;
+        }
+        cur_valid++;
+      }
+    }
+  }
+  delete[] disp_hist;
+  delete[] lookup_exp;
+}
+
 void CSPatchMatch::PostProcessing() {
-  cout << "\t\t do nothing" << endl;
+  cout << "\t\t Weighted Median Post Processing" << endl;
+  int** valid = new int*[kViewNum];
+  for (int v = kLeft; v <= kRight; v = RefView(v + 1)) {
+    valid[v] = new int[hei_ * wid_]();    // set to 0 (invalid)
+  }
+  // left-right check
+  LeftRightCheck(valid);
+  // fill invalid
+  FillInvalid(valid);
+//#ifdef _DEBUG
+  imshow("l_dis", dis_[kLeft]);
+  imshow("r_dis", dis_[kRight]);
+  waitKey(-1);
+//#endif
+  // weighted median filter
+  const int wnd_size = 35;
+  const double gamma = 10.0;
+  WeightedMedian(valid, wnd_size, gamma);
+//#ifdef _DEBUG
+  imshow("l_dis", dis_[kLeft]);
+  imshow("r_dis", dis_[kRight]);
+  waitKey(-1);
+//#endif
+  // release valid flag
+  for (int v = kLeft; v <= kRight; v = RefView(v + 1)) {
+    delete[] valid[v];
+    valid[v] = NULL;
+  }
+  delete[] valid;
+  valid = NULL;
 }
 
 void CSPatchMatch::PlaneToDisp() {

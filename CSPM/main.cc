@@ -51,8 +51,7 @@ int main(int argc, char** argv) {
   r_img.convertTo(r_img, CV_64F, 1 / 255.0f);
 
   // init time
-  double duration;
-  duration = static_cast<double>(getTickCount());
+  double duration = static_cast<double>(getTickCount());
 
   //
   // Patch Match
@@ -64,8 +63,8 @@ int main(int argc, char** argv) {
   const double alpha = 0.1;
   const double tau_color = 10.0 / 255.0;
   const double tau_grd   = 2.0  / 255.0;
-  const double gamma     = 10.0 / 255.0;
-  GrdPC* plane_cost = new GrdPC(l_img, r_img,
+  const double gamma     = 10.0;
+  GrdPC* plane_cost = new GrdPC(l_img, r_img, FLAGS_max_dis,
     wnd_size, alpha, tau_color, tau_grd, gamma);
   
   patch_match->PatchMatch(max_iter, plane_cost);

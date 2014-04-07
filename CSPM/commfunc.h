@@ -23,6 +23,8 @@ const double kDoubleMax = numeric_limits<double>::max();
 
 enum RefView{ kLeft = 0, kRight = 1 };
 
+#pragma comment(lib, "ShLwapi.lib")
+
 //
 // gflags lib
 //
@@ -94,11 +96,8 @@ void PrintMat(const Mat& mat)
 
 // handle image border
 inline int HandleBorder(const int& loc, const int& size) {
-  if (loc < 0) {
-    return loc + size;
-  }
-  if (loc >= size) {
-    return loc - size;
+  if (loc < 0 || loc >= size) {
+    return ( loc + size ) % size;
   }
   return loc;
 }

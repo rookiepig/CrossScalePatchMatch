@@ -85,6 +85,10 @@ class CSPatchMatch
      const double& n_max, const double& z_thres,
      const IPlaneCost* plane_cost);
 
+   void LeftRightCheck(int** valid);
+   void FillInvalid(int** valid);
+   void WeightedMedian(int** valid, 
+     const int wnd_size, const double gamma);
    void PostProcessing();
 
    void PlaneToDisp();

@@ -9,10 +9,11 @@
 #include"grd_pc.h"
 
 GrdPC::GrdPC(const Mat& l_img, const Mat& r_img,
+  const int& max_disp,
   const int& wnd_size, const double& alpha,
   const double& tau_clr, const double& tau_grd,
   const double& gamma) :
-  wnd_size_(wnd_size), alpha_(alpha),
+  max_disp_(max_disp), wnd_size_(wnd_size), alpha_(alpha),
   tau_clr_(tau_clr), tau_grd_(tau_grd),
   gamma_(gamma) {
   // for TAD + Grd input image must be CV_64FC3
@@ -33,6 +34,11 @@ GrdPC::GrdPC(const Mat& l_img, const Mat& r_img,
     Sobel(gray, grd_x_[v], CV_64F, 1, 0, 1);
     grd_x_[v] += 0.5;
   }
+  // init exp look-up table
+  lookup_exp_ = new double[1000];
+  for (int i = 0; i < 1000; ++i) {
+    lookup_exp_[i] = exp(- i / gamma_);
+  }
 }
 
 GrdPC::~GrdPC(void) {
@@ -52,14 +58,20 @@ double GrdPC::GetPlaneCost(const int& ref_x, const int& ref_y,
       const double wgt = GetCostWeight(ref_x, ref_y, q_x, q_y,
         view);
       double other_x = 0.0;
-      double q_disp = q_x * plane_param[0] +
-        q_y * plane_param[1] + plane_param[2];
-      if (view == kLeft) {
-        other_x = q_x - q_disp;
+      double q_disp = plane_param.dot(Vec3d(q_x, q_y, 1.0));
+      if (q_disp <= 0.0 || q_disp >= max_disp_) {
+        // impossible disparity --> largest cost
+        cost += wgt *(alpha_ * tau_clr_ +
+          (1 - alpha_) * tau_grd_);
       } else {
-        other_x = q_x + q_disp;
+        if (view == kLeft) {
+          other_x = q_x - q_disp;
+        }
+        else {
+          other_x = q_x + q_disp;
+        }
+        cost += wgt * GetPixelCost(q_x, q_y, other_x, q_y, view);
       }
-      cost += wgt * GetPixelCost(q_x, q_y, other_x, q_y, view);
     }
   }
   return cost;
@@ -73,17 +85,18 @@ inline double GrdPC::GetCostWeight(const int& ref_x,
   const double* I_q = img_[view].ptr<double>(q_y) + 3 * q_x;
   double sum = 0;
   for (int c = 0; c < 3; ++c) {
-    sum += fabs(I_p[c] - I_q[c]);
+    sum += 255 * fabs(I_p[c] - I_q[c]);
   }
-  return exp(-sum / gamma_);
+  return lookup_exp_[static_cast<int>(sum)];
+  // return exp(-sum / gamma_);
 }
 
 double GrdPC::GetPixelCost(const int& ref_x, 
   const int& ref_y,
   const double& other_x, const int& other_y,
   const RefView& view) const {
-  int floor_x = floor(other_x);
-  int ceil_x  = ceil(other_x);
+  int floor_x = static_cast<int>(floor(other_x));
+  int ceil_x  = static_cast<int>(ceil(other_x));
   const double floor_wgt = static_cast<double>(ceil_x) - other_x;
   const double ceil_wgt = 1 - floor_wgt;
   // handle special border

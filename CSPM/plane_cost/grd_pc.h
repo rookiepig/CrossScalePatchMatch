@@ -13,6 +13,7 @@
 class GrdPC : public IPlaneCost {
  public:
    GrdPC(const Mat& l_img, const Mat& r_img,
+     const int& max_disp,
      const int& wnd_size, const double& alpha,
      const double& tau_clr, const double& tau_grd,
      const double& gamma);
@@ -37,7 +38,10 @@ class GrdPC : public IPlaneCost {
    // image property
    int wid_;
    int hei_;
+   // look up table for fast-exp
+   double* lookup_exp_;
    // method paramter
+   int max_disp_;
    int wnd_size_;
    double alpha_;    // balance color and gradient cost
    double tau_clr_;  // threshold for color cost

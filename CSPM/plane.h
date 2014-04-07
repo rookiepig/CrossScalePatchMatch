@@ -23,7 +23,7 @@ class Plane {
      norm_ = norm;
    }
    void update_param() {
-     double denom = max(norm_[2], kDoubleEps);
+     double denom = max(fabs(norm_[2]), kDoubleEps);
      param_[0] = -norm_[0] / denom;
      param_[1] = -norm_[1] / denom;
      param_[2] = norm_.dot(point_) / denom;
