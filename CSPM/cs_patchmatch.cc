@@ -4,7 +4,8 @@
 CSPatchMatch::CSPatchMatch(const Mat& l_img, const Mat& r_img, 
   const int& max_dis, const int& dis_scale) :
   max_dis_(max_dis), dis_scale_(dis_scale) {
-  CV_Assert(l_img.type() == CV_64FC3 && r_img.type() == CV_64FC3);
+  // CV_Assert(l_img.type() == CV_64FC3 && r_img.type() == CV_64FC3);
+  CV_Assert(l_img.type() == CV_8UC3 && r_img.type() == CV_8UC3);
   img_[kLeft]  = l_img.clone();
   img_[kRight] = r_img.clone();
   wid_ = img_[kLeft].cols;
@@ -116,7 +117,8 @@ void CSPatchMatch::SpatialPropagation(const int& cur_iter,
     y_st = 1; y_ed = hei_; y_inc = 1;
   }
   for (RefView v = kLeft; v <= kRight; v = RefView(v + 1) ) {
-    // row[y_st] has no y-axis neighbour
+    cout << "\t\t\t view: " << v << endl;
+    // specially handle the first row, i.e.  y_st - y_inc
     for (int x = x_st; x != x_ed; x += x_inc) {
       const Plane& nx_plane = plane_[v][y_st - y_inc][x - x_inc];
       const double nx_cost =
@@ -127,7 +129,6 @@ void CSPatchMatch::SpatialPropagation(const int& cur_iter,
       }
     }
     for (int y = y_st; y != y_ed; y += y_inc) {
-      cout << ".s.p";
       for (int x = x_st; x != x_ed; x += x_inc) {
         // x-axis neighbour
         const Plane& nx_plane = plane_[v][y][x - x_inc];
@@ -147,7 +148,6 @@ void CSPatchMatch::SpatialPropagation(const int& cur_iter,
         }
       }
     }
-    cout << endl;
   } // end for view
 }
 
@@ -167,9 +167,9 @@ void CSPatchMatch::ViewPropagation(const IPlaneCost* plane_cost) {
   cout << "\t\t View Propagation" << endl;
   for (RefView v = kLeft; v <= kRight; v = RefView(v + 1)) {
     int other_view = 1 - v;
+    cout << "\t\t\t view: " << v << endl;
     // iterate all other view pixels
     for (int y = 0; y < hei_; ++y) {
-      cout << ".v.p";
       for (int x = 0; x < wid_; ++x) {
         Vec3d param = plane_[other_view][y][x].param();
         double disp = param[0] * x + param[1] * y + param[2];
@@ -190,7 +190,6 @@ void CSPatchMatch::ViewPropagation(const IPlaneCost* plane_cost) {
         }
       }
     }
-    cout << endl;
   }
 }
 
@@ -215,25 +214,33 @@ void CSPatchMatch::PlaneRefinement(const double& z_max,
   double z_iter = z_max;
   double n_iter = n_max;
   RNG rng;
+  // random disturbing variables
+  Plane disturb_plane;
+  Vec3d delta_norm(0.0, 0.0, 0.0);
+  Vec3d disturb_norm(0.0, 0, 0, 0.0);
   while (z_iter >= z_thres) {
+    cout << "\t\t\t pf iter cur z_max: " << z_iter << endl;
     for (RefView v = kLeft; v <= kRight; v = RefView(v + 1)) {
+      #pragma omp parallel for 
       for (int y = 0; y < hei_; ++y) {
-        cout << ".p.f";
+        //Plane*  cur_plane = plane_[v][y];
+        //double* cur_min_cost = min_cost_[v][y];
         for (int x = 0; x < wid_; ++x) {
-          Plane disturb_plane;
-          Plane org_plane = plane_[v][y][x];
-          Vec3d org_norm  = org_plane.norm();
+          Plane*  cur_plane = &plane_[v][y][x];
+          double* cur_min_cost = &min_cost_[v][y][x];
+          Vec3d org_plane_param = cur_plane->param();
           // distrub point (x, y, z)
-          double disturb_z = org_plane.param().dot(Vec3d(x, y, 1.0));
+          double disturb_z = org_plane_param[0] * x +
+                             org_plane_param[1] * y +
+                             org_plane_param[2];
           disturb_plane.set_point(
             Point3d(x, y,
               disturb_z + rng.uniform(-z_iter, z_iter)
              )
            );
           // distrub norm
-          Vec3d delta_norm(0.0, 0.0, 0.0);
           rng.fill(delta_norm, RNG::UNIFORM, -n_iter, n_iter);
-          Vec3d disturb_norm = org_norm + delta_norm;
+          disturb_norm = cur_plane->norm() + delta_norm;
           double denom = max(norm(disturb_norm, NORM_L2),
             kDoubleEps);
           disturb_plane.set_norm(disturb_norm / denom);
@@ -242,22 +249,22 @@ void CSPatchMatch::PlaneRefinement(const double& z_max,
           // update plane
           const double distrub_cost = 
             plane_cost->GetPlaneCost(x, y, disturb_plane, v);
-          if (distrub_cost < min_cost_[v][y][x]) {
-            plane_[v][y][x] = disturb_plane;
-            min_cost_[v][y][x] = distrub_cost;
+          if (distrub_cost < *cur_min_cost) {
+            *cur_plane = disturb_plane;
+            *cur_min_cost = distrub_cost;
           }
+          //++cur_plane;
+          //++cur_min_cost;
         }
       }
     }
     z_iter /= 2.0;
     n_iter /= 2.0;
-    cout << endl;
   }
 }
 
 void CSPatchMatch::LeftRightCheck(int** valid) {
   cout << "\t\t\t left-right check" << endl;
-  const int imgSize = hei_ * wid_;
   int* l_valid = valid[kLeft];
   int* r_valid = valid[kRight];
   for (int y = 0; y < hei_; y++) {
@@ -268,6 +275,7 @@ void CSPatchMatch::LeftRightCheck(int** valid) {
       double l_disp = l_dis_data[x] * 1.0 / dis_scale_;
       // assert( ( x - lDep ) >= 0 && ( x - lDep ) < wid );
       int r_loc = (x - static_cast<int>(l_disp) + wid_) % wid_;
+      CV_Assert(r_loc >= 0 && r_loc < wid_);
       double r_disp = r_dis_data[r_loc] * 1.0 / dis_scale_;
       // disparity should not be zero
       if (fabs(l_disp - r_disp) <= 1.0 && l_disp > 0) {
@@ -277,7 +285,8 @@ void CSPatchMatch::LeftRightCheck(int** valid) {
       r_disp = r_dis_data[x] / dis_scale_;
       // assert( ( x + rDep ) >= 0 && ( x + rDep ) < wid );
       int l_loc = (x + static_cast<int>(r_disp) + wid_) % wid_;
-      l_disp = l_dis_data[l_loc] / dis_scale_;
+      CV_Assert(l_loc >= 0 && l_loc < wid_);
+      l_disp = l_dis_data[l_loc] * 1.0 / dis_scale_;
       // disparity should not be zero
       if (fabs(r_disp - l_disp) <= 1.0 && r_disp > 0) {
         *r_valid = 1;
@@ -304,7 +313,7 @@ void CSPatchMatch::FillInvalid(int** valid) {
               l_find = 1;
               break;
             }
-            l_first--;
+            --l_first;
           }
           int r_find = 0;
           // find right first valid pixel
@@ -314,7 +323,7 @@ void CSPatchMatch::FillInvalid(int** valid) {
               r_find = 1;
               break;
             }
-            r_first++;
+            ++r_first;
           }
           // set x's depth to the lowest one
           if (l_find && r_find) {
@@ -370,32 +379,34 @@ void CSPatchMatch::WeightedMedian(int** valid,
     int* cur_valid = valid[v];
     for (int y = 0; y < hei_; y++) {
       uchar* l_dis_data = dis_[v].ptr<uchar>(y);
-      double* pL = img_[v].ptr<double>(y);
+      const uchar* pL = img_[v].ptr<uchar>(y);
       for (int x = 0; x < wid_; x++) {
         if (*cur_valid == 0) {
+          const uchar* pL_x = pL + 3 * x;
           // just filter invalid pixels
           fill(disp_hist, disp_hist + 256, 0.0);
           double sum_wgt = 0.0f;
           // set disparity histogram by bilateral weight
           for (int wy = -half_wnd; wy <= half_wnd; wy++) {
-            int qy = HandleBorder(y + wy, hei_);
+            const int qy = HandleBorder(y + wy, hei_);
             // int* qLValid = lValid + qy * wid;
-            double* qL = img_[v].ptr<double>(qy);
-            uchar* q_dis_data = dis_[v].ptr<uchar>(qy);
+            const uchar* qL = img_[v].ptr<uchar>(qy);
+            const uchar* q_dis_data = dis_[v].ptr<uchar>(qy);
             for (int wx = -half_wnd; wx <= half_wnd; wx++) {
-              int qx = HandleBorder(x + wx, wid_);
+              const int qx = HandleBorder(x + wx, wid_);
               // invalid pixel also used
               // if( qLValid[ qx ] && wx != 0 && wy != 0 ) {
-              int q_disp = static_cast<int>(q_dis_data[qx]);
+              const int q_disp = static_cast<int>(q_dis_data[qx]);
               if (q_disp > 0) {
                 // double disWgt = wx * wx + wy * wy;
                 // disWgt = sqrt( disWgt );
-                double clr_diff =
-                  255 * fabs(pL[3 * x] - qL[3 * qx]) +
-                  255 * fabs(pL[3 * x + 1] - qL[3 * qx + 1]) +
-                  255 * fabs(pL[3 * x + 2] - qL[3 * qx + 2]);
+                const uchar * qL_x = qL + 3 * qx;
+                int clr_diff =
+                  abs(pL_x[0] - qL_x[0]) +
+                  abs(pL_x[1] - qL_x[1]) +
+                  abs(pL_x[2] - qL_x[2]);
                 // clrWgt = sqrt( clrWgt );
-                double wgt = lookup_exp[static_cast<int>(clr_diff)];
+                double wgt = lookup_exp[clr_diff];
                 disp_hist[q_disp] += wgt;
                 sum_wgt += wgt;
               }
@@ -431,21 +442,44 @@ void CSPatchMatch::PostProcessing() {
   }
   // left-right check
   LeftRightCheck(valid);
+//#ifdef _DEBUG
+  // visualize valid
+  Mat tmp(hei_, wid_, CV_8UC1);
+  int* p_valid = valid[kLeft];
+  for (int y = 0; y < hei_; ++y) {
+    for (int x = 0; x < wid_; ++x) {
+      if (*p_valid) {
+        tmp.at<uchar>(y, x) = 255;
+      } else {
+        tmp.at<uchar>(y, x) = 0;
+      }
+      ++p_valid;
+    }
+  }
+
+  // imshow("l_valid", tmp);
+  imwrite("l_valid.png", tmp);
+  //imshow("l_dis", dis_[kLeft]);
+  //imshow("r_dis", dis_[kRight]);
+  imwrite("l_raw.png", dis_[kLeft]);
+  // waitKey(-1);
+//#endif
   // fill invalid
   FillInvalid(valid);
 //#ifdef _DEBUG
-  imshow("l_dis", dis_[kLeft]);
-  imshow("r_dis", dis_[kRight]);
-  waitKey(-1);
+  //imshow("l_dis", dis_[kLeft]);
+  //imshow("r_dis", dis_[kRight]);
+  imwrite("l_fill.png", dis_[kLeft]);
+  // waitKey(-1);
 //#endif
   // weighted median filter
   const int wnd_size = 35;
   const double gamma = 10.0;
   WeightedMedian(valid, wnd_size, gamma);
 //#ifdef _DEBUG
-  imshow("l_dis", dis_[kLeft]);
-  imshow("r_dis", dis_[kRight]);
-  waitKey(-1);
+  //imshow("l_dis", dis_[kLeft]);
+  //imshow("r_dis", dis_[kRight]);
+  //waitKey(-1);
 //#endif
   // release valid flag
   for (int v = kLeft; v <= kRight; v = RefView(v + 1)) {
@@ -464,8 +498,8 @@ void CSPatchMatch::PlaneToDisp() {
       for (int x = 0; x < wid_; ++x) {
         double disp = dis_scale_ *
           plane_[v][y][x].param().dot(Vec3d(x, y, 1.0));
-        dis_row[x] = static_cast<uchar>(
-          HandleBorder(static_cast<int>(disp), 256));
+        // narrow disp to [0, 255]
+        dis_row[x] = saturate_cast<uchar>(static_cast<int>(disp));
       }
     }
   }

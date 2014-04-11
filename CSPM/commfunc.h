@@ -14,6 +14,7 @@
 #include<limits>
 #include<cstdlib>
 #include<gflags\gflags.h>
+#include<omp.h>
 using namespace std;
 using namespace cv;
 

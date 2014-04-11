@@ -45,10 +45,10 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
   // set image format
-  cvtColor(l_img, l_img, CV_BGR2RGB);
-  cvtColor(r_img, r_img, CV_BGR2RGB);
-  l_img.convertTo(l_img, CV_64F, 1 / 255.0f);
-  r_img.convertTo(r_img, CV_64F, 1 / 255.0f);
+  //cvtColor(l_img, l_img, CV_BGR2RGB);
+  //cvtColor(r_img, r_img, CV_BGR2RGB);
+  //l_img.convertTo(l_img, CV_64F, 1 / 255.0f);
+  //r_img.convertTo(r_img, CV_64F, 1 / 255.0f);
 
   // init time
   double duration = static_cast<double>(getTickCount());
@@ -60,12 +60,14 @@ int main(int argc, char** argv) {
   CSPatchMatch* patch_match = new CSPatchMatch(l_img, r_img,
     FLAGS_max_dis, FLAGS_dis_scale);
   const int wnd_size = 35;
-  const double alpha = 0.1;
-  const double tau_color = 10.0 / 255.0;
-  const double tau_grd   = 2.0  / 255.0;
-  const double gamma     = 10.0;
-  GrdPC* plane_cost = new GrdPC(l_img, r_img, FLAGS_max_dis,
-    wnd_size, alpha, tau_color, tau_grd, gamma);
+
+  //const double alpha = 0.1;
+  //const double tau_color = 10.0 / 255.0;
+  //const double tau_grd   = 2.0  / 255.0;
+  //const double gamma     = 10.0;
+
+  GrdPC* plane_cost = new GrdPC(l_img, r_img, FLAGS_max_dis, wnd_size);
+  // , alpha, tau_color, tau_grd, gamma);
   
   patch_match->PatchMatch(max_iter, plane_cost);
 

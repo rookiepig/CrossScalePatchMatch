@@ -1,0 +1,7 @@
+--l_img_file="venus_l.png" --r_img_file="venus_r.png" --l_dis_file="venus_ld.png" --r_dis_file="venus_rd.png" --max_dis=20 --dis_scale=8
+
+--l_img_file="teddy_l.png" --r_img_file="teddy_r.png" --l_dis_file="teddy_ld.png" --r_dis_file="teddy_rd.png" --max_dis=60 --dis_scale=4
+
+
+--l_img_file="Reindeer_l.png" --r_img_file="Reindeer_r.png" --l_dis_file="Reindeer_ld.png" --r_dis_file="Reindeer_rd.png" --max_dis=80 --dis_scale=3
+

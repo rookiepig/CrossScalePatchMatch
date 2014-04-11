@@ -10,13 +10,19 @@
 #include"../commfunc.h"
 #include"i_plane_cost.h"
 
+#define COST_ALPHA 0.1
+#define TAU_CLR 10
+#define TAU_GRD 2
+#define WGT_GAMMA  10
+
 class GrdPC : public IPlaneCost {
  public:
    GrdPC(const Mat& l_img, const Mat& r_img,
      const int& max_disp,
-     const int& wnd_size, const double& alpha,
-     const double& tau_clr, const double& tau_grd,
-     const double& gamma);
+     const int& wnd_size);
+     //const double& alpha,
+     //const double& tau_clr, const double& tau_grd,
+     //const double& gamma);
    ~GrdPC(void);
    virtual double GetPlaneCost(
      const int& ref_x,
@@ -33,6 +39,7 @@ class GrdPC : public IPlaneCost {
      const RefView& view) const;
    // color image
    Mat img_[kViewNum];
+   Mat lab_[kViewNum];
    // gradient along x axis
    Mat grd_x_[kViewNum];
    // image property
@@ -43,8 +50,8 @@ class GrdPC : public IPlaneCost {
    // method paramter
    int max_disp_;
    int wnd_size_;
-   double alpha_;    // balance color and gradient cost
-   double tau_clr_;  // threshold for color cost
-   double tau_grd_;  // threshold for gradient cost
-   double gamma_;    // cost weight parameter
+   //double alpha_;    // balance color and gradient cost
+   //double tau_clr_;  // threshold for color cost
+   //double tau_grd_;  // threshold for gradient cost
+   //double gamma_;    // cost weight parameter
 };

@@ -9,35 +9,40 @@
 #include"grd_pc.h"
 
 GrdPC::GrdPC(const Mat& l_img, const Mat& r_img,
-  const int& max_disp,
-  const int& wnd_size, const double& alpha,
-  const double& tau_clr, const double& tau_grd,
-  const double& gamma) :
-  max_disp_(max_disp), wnd_size_(wnd_size), alpha_(alpha),
-  tau_clr_(tau_clr), tau_grd_(tau_grd),
-  gamma_(gamma) {
+  const int& max_disp, const int& wnd_size ) :
+  //const double& alpha,
+  //const double& tau_clr, const double& tau_grd,
+  //const double& gamma) :
+  max_disp_(max_disp), wnd_size_(wnd_size) {
+  //alpha_(alpha),
+  //tau_clr_(tau_clr), tau_grd_(tau_grd),
+  //gamma_(gamma) {
+
   // for TAD + Grd input image must be CV_64FC3
-  CV_Assert(l_img.type() == CV_64FC3 && r_img.type() == CV_64FC3);
+  // CV_Assert(l_img.type() == CV_64FC3 && r_img.type() == CV_64FC3);
+  CV_Assert(l_img.type() == CV_8UC3 && r_img.type() == CV_8UC3);
   cout << "\t GRD plane cost\n";
   img_[kLeft]  = l_img.clone();
   img_[kRight] = r_img.clone();
   hei_ = l_img.rows;
   wid_ = l_img.cols;
-  // get x-axis gradient
-  for (int v = 0; v < kViewNum; ++v) {
-    Mat tmp;
+  for (int v = kLeft; v <= kRight; v = RefView(v + 1)) {
+    // get LAB color image
+    cvtColor(img_[v], lab_[v], CV_BGR2Lab);  
+    // get x-axis gradient
+    // Mat tmp;
     Mat gray;
-    img_[v].convertTo(tmp, CV_32F);
-    cvtColor(tmp, gray, CV_RGB2GRAY);
+    // img_[v].convertTo(tmp, CV_32F);
+    cvtColor(img_[v], gray, CV_BGR2GRAY);
     // X Gradient
     // sobel size must be 1
-    Sobel(gray, grd_x_[v], CV_64F, 1, 0, 1);
-    grd_x_[v] += 0.5;
+    Sobel(gray, grd_x_[v], CV_16S, 1, 0, 1);
+    // grd_x_[v] += 0.5;
   }
   // init exp look-up table
   lookup_exp_ = new double[1000];
   for (int i = 0; i < 1000; ++i) {
-    lookup_exp_[i] = exp(- i / gamma_);
+    lookup_exp_[i] = exp(-i * 1.0 / WGT_GAMMA);
   }
 }
 
@@ -57,19 +62,21 @@ double GrdPC::GetPlaneCost(const int& ref_x, const int& ref_y,
       int q_x = HandleBorder(ref_x + dx, wid_);
       const double wgt = GetCostWeight(ref_x, ref_y, q_x, q_y,
         view);
-      double other_x = 0.0;
-      double q_disp = plane_param.dot(Vec3d(q_x, q_y, 1.0));
+      double q_disp = plane_param[0] * q_x +
+                      plane_param[1] * q_y +
+                      plane_param[2];
       if (q_disp <= 0.0 || q_disp >= max_disp_) {
         // impossible disparity --> largest cost
-        cost += wgt *(alpha_ * tau_clr_ +
-          (1 - alpha_) * tau_grd_);
+        cost += wgt * (COST_ALPHA * TAU_CLR +
+          (1 - COST_ALPHA) * TAU_GRD);
       } else {
-        if (view == kLeft) {
-          other_x = q_x - q_disp;
-        }
-        else {
-          other_x = q_x + q_disp;
-        }
+        //if (view == kLeft) {
+        //  other_x = q_x - q_disp;
+        //}
+        //else {
+        //  other_x = q_x + q_disp;
+        //}
+        const double other_x = q_x + (2 * view - 1) * q_disp;
         cost += wgt * GetPixelCost(q_x, q_y, other_x, q_y, view);
       }
     }
@@ -81,48 +88,47 @@ inline double GrdPC::GetCostWeight(const int& ref_x,
   const int& ref_y, const int& q_x, const int& q_y,
   const RefView& view) const {
   // assume three channel
-  const double* I_p = img_[view].ptr<double>(ref_y) + 3 * ref_x;
-  const double* I_q = img_[view].ptr<double>(q_y) + 3 * q_x;
-  double sum = 0;
-  for (int c = 0; c < 3; ++c) {
-    sum += 255 * fabs(I_p[c] - I_q[c]);
-  }
-  return lookup_exp_[static_cast<int>(sum)];
+  const uchar* I_p = lab_[view].ptr<uchar>(ref_y) + 3 * ref_x;
+  const uchar* I_q = lab_[view].ptr<uchar>(q_y) + 3 * q_x;
+  int sum = abs(I_p[0] - I_q[0]) +
+            abs(I_p[1] - I_q[1]) +
+            abs(I_p[2] - I_q[2]);
+  return lookup_exp_[sum];
   // return exp(-sum / gamma_);
 }
 
-double GrdPC::GetPixelCost(const int& ref_x, 
-  const int& ref_y,
-  const double& other_x, const int& other_y,
+inline double GrdPC::GetPixelCost(const int& ref_x, 
+  const int& ref_y, const double& other_x, const int& other_y,
   const RefView& view) const {
+ 
   int floor_x = static_cast<int>(floor(other_x));
-  int ceil_x  = static_cast<int>(ceil(other_x));
-  const double floor_wgt = static_cast<double>(ceil_x) - other_x;
-  const double ceil_wgt = 1 - floor_wgt;
+  int ceil_x = floor_x + 1;
+  const double floor_wgt = ceil_x - other_x;
+  // const double ceil_wgt = 1 - floor_wgt;
   // handle special border
   floor_x = HandleBorder(floor_x, wid_);
   ceil_x  = HandleBorder(ceil_x, wid_);
-  const double* I_q = img_[view].ptr<double>(ref_y) + 3 * ref_x;
+  const uchar* I_q = img_[view].ptr<uchar>(ref_y) + 3 * ref_x;
   // 1 - view --> other view
-  const double* I_floor = img_[1 - view].ptr<double>(other_y) +
-    3 * floor_x;
-  const double* I_ceil = img_[1 - view].ptr<double>(other_y) +
-    3 * ceil_x;
-  double clr_cost = 0.0;
-  for (int c = 0; c < 3; ++c) {
-    // interpolated color difference
-    clr_cost += fabs(I_q[c] -
-      (floor_wgt * I_floor[c] + ceil_wgt * I_ceil[c]));
-  }
-  double grd_cost = 0.0;
-  const double* G_q = grd_x_[view].ptr<double>(ref_y) + ref_x;
-  const double* G_floor = grd_x_[1 - view].ptr<double>(other_y) + 
-    floor_x;
-  const double* G_ceil = grd_x_[1 - view].ptr<double>(other_y) +
-    ceil_x;
+  const uchar* I_ohter_y = img_[1 - view].ptr<uchar>(other_y);
+  const uchar* I_floor = I_ohter_y + 3 * floor_x;
+  const uchar* I_ceil = I_ohter_y + 3 * ceil_x;
+  // interpolated color difference
+  double clr_cost = 
+    fabs(I_q[0] - I_ceil[0] + floor_wgt * (I_ceil[0] - I_floor[0])) +
+    fabs(I_q[1] - I_ceil[1] + floor_wgt * (I_ceil[1] - I_floor[1])) +
+    fabs(I_q[2] - I_ceil[2] + floor_wgt * (I_ceil[2] - I_floor[2]));
+  // for (int c = 0; c < 3; ++c) {
+  // } 
+  const short G_q = *(grd_x_[view].ptr<short>(ref_y) +ref_x);
+  const short* G_other_y = grd_x_[1 - view].ptr<short>(other_y);
+  const short G_floor = G_other_y[floor_x];
+  const short G_ceil = G_other_y[ceil_x];
   // interpolated gradient difference
-  grd_cost = fabs(*G_q - (floor_wgt * (*G_floor) +
-    ceil_wgt * (*G_ceil)));
-  return alpha_ * min(clr_cost, tau_clr_) + 
-    (1 - alpha_) * min(grd_cost, tau_grd_);
+  double grd_cost = 
+    fabs(G_q - G_ceil + floor_wgt * (G_ceil - G_floor));
+
+  clr_cost = clr_cost > TAU_CLR ? TAU_CLR : clr_cost;
+  grd_cost = grd_cost > TAU_GRD ? TAU_GRD : grd_cost;
+  return COST_ALPHA * clr_cost + (1 - COST_ALPHA) * grd_cost;
 }
