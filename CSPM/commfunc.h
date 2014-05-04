@@ -95,6 +95,15 @@ void PrintMat(const Mat& mat)
 	printf("\n");
 }
 
+// fast float floor to int
+inline int Floor2Int(double d)
+{
+  const double dme = .5f - 1.5e-8;
+  d -= dme;
+  // magic number
+  d = d + 6755399441055744.0;
+  return ((int*)&d)[0];
+}
 // handle image border
 inline int HandleBorder(const int& loc, const int& size) {
   if (loc < 0 || loc >= size) {

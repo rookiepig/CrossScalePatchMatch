@@ -33,6 +33,9 @@
     <ClInclude Include="plane_cost\i_plane_cost.h">
       <Filter>plane_cost</Filter>
     </ClInclude>
+    <ClInclude Include="plane_cost\cspc.h">
+      <Filter>plane_cost</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cs_patchmatch.cc">
@@ -42,6 +45,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="plane_cost\grd_pc.cc">
+      <Filter>plane_cost</Filter>
+    </ClCompile>
+    <ClCompile Include="plane_cost\cspc.cc">
       <Filter>plane_cost</Filter>
     </ClCompile>
   </ItemGroup>

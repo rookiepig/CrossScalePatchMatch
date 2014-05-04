@@ -22,12 +22,14 @@
     <ClInclude Include="commfunc.h" />
     <ClInclude Include="cs_patchmatch.h" />
     <ClInclude Include="plane.h" />
+    <ClInclude Include="plane_cost\cspc.h" />
     <ClInclude Include="plane_cost\grd_pc.h" />
     <ClInclude Include="plane_cost\i_plane_cost.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cs_patchmatch.cc" />
     <ClCompile Include="main.cc" />
+    <ClCompile Include="plane_cost\cspc.cc" />
     <ClCompile Include="plane_cost\grd_pc.cc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

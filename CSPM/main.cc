@@ -11,6 +11,7 @@
 #include"commfunc.h"
 #include"cs_patchmatch.h"
 #include"plane_cost\grd_pc.h"
+#include"plane_cost\cspc.h"
 
 //
 // gflags commind line variables
@@ -67,6 +68,7 @@ int main(int argc, char** argv) {
   //const double gamma     = 10.0;
 
   GrdPC* plane_cost = new GrdPC(l_img, r_img, FLAGS_max_dis, wnd_size);
+  // CSPC* plane_cost = new CSPC(l_img, r_img, FLAGS_max_dis, wnd_size, 5);
   // , alpha, tau_color, tau_grd, gamma);
   
   patch_match->PatchMatch(max_iter, plane_cost);

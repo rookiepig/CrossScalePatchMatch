@@ -80,8 +80,7 @@ void CSPatchMatch::InitRandomPlane() {
           static_cast<double>(max_dis_));
         plane_[v][y][x].set_point(Point3d(x, y, rand_dis));
         Vec3d rand_norm(0.0, 0.0, 0.0);
-        rng.fill(rand_norm, RNG::NORMAL, norm_avg, 
-          norm_std);
+        rng.fill(rand_norm, RNG::NORMAL, norm_avg, norm_std);
         double denom = max(norm(rand_norm, NORM_L2), kDoubleEps);
         plane_[v][y][x].set_norm(rand_norm / denom);
         // udpate plane paramter
@@ -217,7 +216,7 @@ void CSPatchMatch::PlaneRefinement(const double& z_max,
   // random disturbing variables
   Plane disturb_plane;
   Vec3d delta_norm(0.0, 0.0, 0.0);
-  Vec3d disturb_norm(0.0, 0, 0, 0.0);
+  Vec3d disturb_norm(0.0, 0.0, 0.0);
   while (z_iter >= z_thres) {
     cout << "\t\t\t pf iter cur z_max: " << z_iter << endl;
     for (RefView v = kLeft; v <= kRight; v = RefView(v + 1)) {
@@ -458,10 +457,10 @@ void CSPatchMatch::PostProcessing() {
   }
 
   // imshow("l_valid", tmp);
-  imwrite("l_valid.png", tmp);
+  // imwrite("l_valid.png", tmp);
   //imshow("l_dis", dis_[kLeft]);
   //imshow("r_dis", dis_[kRight]);
-  imwrite("l_raw.png", dis_[kLeft]);
+  // imwrite("l_raw.png", dis_[kLeft]);
   // waitKey(-1);
 //#endif
   // fill invalid
@@ -469,7 +468,7 @@ void CSPatchMatch::PostProcessing() {
 //#ifdef _DEBUG
   //imshow("l_dis", dis_[kLeft]);
   //imshow("r_dis", dis_[kRight]);
-  imwrite("l_fill.png", dis_[kLeft]);
+  // imwrite("l_fill.png", dis_[kLeft]);
   // waitKey(-1);
 //#endif
   // weighted median filter

@@ -22,7 +22,7 @@ class Plane {
    void set_norm(const Point3d& norm) {
      norm_ = norm;
    }
-   void update_param() {
+   inline void update_param() {
      // avoid deivde 0
      double denom = max(fabs(norm_[2]), kDoubleEps);
      if (norm_[2] < 0.0) {
