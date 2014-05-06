@@ -14,6 +14,7 @@
 #define TAU_CLR 10
 #define TAU_GRD 2
 #define WGT_GAMMA  10
+// #define USE_LAB_WGT
 
 class GrdPC : public IPlaneCost {
  public:
@@ -50,6 +51,7 @@ class GrdPC : public IPlaneCost {
    // method paramter
    int max_disp_;
    int wnd_size_;
+   int half_wnd_;
    //double alpha_;    // balance color and gradient cost
    //double tau_clr_;  // threshold for color cost
    //double tau_grd_;  // threshold for gradient cost

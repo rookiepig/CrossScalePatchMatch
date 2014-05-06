@@ -96,18 +96,34 @@ void PrintMat(const Mat& mat)
 }
 
 // fast float floor to int
-inline int Floor2Int(double d)
-{
+inline int Floor2Int(double d) {
+  // minus -0.5 to floor
   const double dme = .5f - 1.5e-8;
   d -= dme;
   // magic number
   d = d + 6755399441055744.0;
-  return ((int*)&d)[0];
+  return ((int*)&d)[0];    // 0 for little endian, 1 for big endian
 }
+
+// fast float rount to int
+inline int Round2Int(double d) {
+  // magic number
+  d = d + 6755399441055744.0;
+  return ((int*)&d)[0];    // 0 for little endian, 1 for big endian
+}
+
 // handle image border
 inline int HandleBorder(const int& loc, const int& size) {
-  if (loc < 0 || loc >= size) {
-    return ( loc + size ) % size;
+  //if (loc < 0 || loc >= size) {
+  //  // mod too slow !!!
+  //  return ( loc + size ) % size;
+  //}
+  if (loc < 0) {
+    return 0;
+  }
+  if (loc >= size) {
+    return size - 1;
   }
   return loc;
 }
+#define MY_DEBUG

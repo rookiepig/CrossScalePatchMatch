@@ -88,5 +88,7 @@ int main(int argc, char** argv) {
   imwrite(FLAGS_l_dis_file, l_dis);
   imwrite(FLAGS_r_dis_file, r_dis);
 
+  //cout << "Press any key to continue..." << endl;
+  //getchar();
   return EXIT_SUCCESS;
 }

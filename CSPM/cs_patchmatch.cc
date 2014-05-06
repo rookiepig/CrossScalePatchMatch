@@ -15,76 +15,88 @@ CSPatchMatch::CSPatchMatch(const Mat& l_img, const Mat& r_img,
     dis_[v] = Mat::zeros(hei_, wid_, CV_8UC1);
   }
   // allocate plane and min_cost
-  for (int v = 0; v < kViewNum; ++v) {
-    plane_[v] = new Plane*[hei_];
-    min_cost_[v] = new double*[hei_];
-    for (int y = 0; y < hei_; ++y) {
-      plane_[v][y] = new Plane[wid_];
-      min_cost_[v][y] = new double[wid_];
-      // set min cost to max double
-      fill(min_cost_[v][y], min_cost_[v][y] + wid_, kDoubleMax);
-    }
-  }
+  plane_    = new Plane[kViewNum * hei_ * wid_];
+  min_cost_ = new double[kViewNum * hei_ * wid_];
 }
 
 CSPatchMatch::~CSPatchMatch() {
-  for (int v = 0; v < kViewNum; ++v) {
-    for (int y = 0; y < hei_; ++y) {
-      delete[] plane_[v][y];
-      delete[] min_cost_[v][y];
-      plane_[v][y] = NULL;
-      min_cost_[v][y] = NULL;
-    }
-    delete[] plane_[v];
-    delete[] min_cost_[v];
-    plane_[v] = NULL;
-    min_cost_[v] = NULL;
-  }
+  delete[] plane_;
+  delete[] min_cost_;
 }
 
 void CSPatchMatch::PatchMatch(const int& iter_num, 
   const IPlaneCost* plane_cost) {
   cout << "\t Patch Match" << endl;
-  InitRandomPlane();
+  InitRandomPlane(plane_cost);
   for (int i = 0; i < iter_num; ++i) {
     cout << "\t\t Iter: " << i << endl;
+#ifdef MY_DEBUG
+    // init time
+    double duration = static_cast<double>(getTickCount());
+#endif
     SpatialPropagation(i, plane_cost);
+#ifdef MY_DEBUG
+    // record time
+    duration = static_cast<double>(getTickCount()) - duration;
+    duration /= cv::getTickFrequency(); // the elapsed time in sec
+    cout << "\t\t spatial prop time: " << duration << endl;
+#endif
+#ifdef _DEBUG
+    // view disparity
+    PlaneToDisp();
+    imshow("l_dis", dis_[0]);
+    waitKey(-1);
+#endif
     ViewPropagation(plane_cost);
+#ifdef _DEBUG
+    // view disparity
+    PlaneToDisp();
+    imshow("l_dis", dis_[0]);
+    waitKey(-1);
+#endif
     PlaneRefinement(max_dis_ / 2.0, kMaxNorm_, kZStopThres_, plane_cost);
 #ifdef _DEBUG
-    //PlaneToDisp();
-    //imshow("iter_disp", dis_[kLeft]);
-    //waitKey(-1);
+    // view disparity
+    PlaneToDisp();
+    imshow("l_dis", dis_[0]);
+    waitKey(-1);
 #endif
   }
   PlaneToDisp();
-  PostProcessing();
+  // PostProcessing();
 }
 
 Mat& CSPatchMatch::dis(const RefView& view) {
   return dis_[view];
 }
 
-void CSPatchMatch::InitRandomPlane() {
+void CSPatchMatch::InitRandomPlane(const IPlaneCost* plane_cost) {
   cout << "\t\t Init Random Plane" << endl;
   CV_Assert(plane_ != NULL);
   RNG rng;
   // paramter for gaussian distribution
   const double norm_avg = 0.0;
   const double norm_std = 1.0;
-  for (int v = 0; v < kViewNum; ++v) {
+  Plane* cur_plane = plane_;
+  double* cur_min_cost = min_cost_;
+  for (RefView v = kLeft; v <= kRight; v = RefView(v + 1)) {
     for (int y = 0; y < hei_; ++y) {
       for (int x = 0; x < wid_; ++x) {
         // rand point and norm
         double rand_dis = rng.uniform(kDoubleEps,
           static_cast<double>(max_dis_));
-        plane_[v][y][x].set_point(Point3d(x, y, rand_dis));
+        cur_plane->set_point(Point3d(x, y, rand_dis));
         Vec3d rand_norm(0.0, 0.0, 0.0);
         rng.fill(rand_norm, RNG::NORMAL, norm_avg, norm_std);
         double denom = max(norm(rand_norm, NORM_L2), kDoubleEps);
-        plane_[v][y][x].set_norm(rand_norm / denom);
+        cur_plane->set_norm(rand_norm / denom);
         // udpate plane paramter
-        plane_[v][y][x].update_param();
+        cur_plane->update_param();
+        // update min cost
+        *cur_min_cost = 
+          plane_cost->GetPlaneCost(x, y, *cur_plane, v);
+        ++cur_plane;
+        ++cur_min_cost;
       }
     }
   }
@@ -117,34 +129,48 @@ void CSPatchMatch::SpatialPropagation(const int& cur_iter,
   }
   for (RefView v = kLeft; v <= kRight; v = RefView(v + 1) ) {
     cout << "\t\t\t view: " << v << endl;
+    Plane* cur_plane = plane_ + (v + 1) * hei_ * wid_ - 1;
+    double* cur_min_cost = min_cost_ + (v + 1) * hei_ * wid_ - 1;
+    if (cur_iter % 2 == 0) {
+      cur_plane = plane_ + v * hei_ * wid_;
+      cur_min_cost = min_cost_ + v * hei_ * wid_;
+    }
     // specially handle the first row, i.e.  y_st - y_inc
+    cur_plane += x_inc;
+    cur_min_cost += x_inc;
     for (int x = x_st; x != x_ed; x += x_inc) {
-      const Plane& nx_plane = plane_[v][y_st - y_inc][x - x_inc];
+      const Plane& nx_plane = *(cur_plane - x_inc);
       const double nx_cost =
         plane_cost->GetPlaneCost(x, y_st - y_inc, nx_plane, v);
-      if (nx_cost < min_cost_[v][y_st - y_inc][x]) {
-        min_cost_[v][y_st - y_inc][x] = nx_cost;
-        plane_[v][y_st - y_inc][x] = nx_plane;
+      if (nx_cost < *cur_min_cost) {
+        *cur_min_cost = nx_cost;
+        *cur_plane = nx_plane;
       }
+      cur_plane += x_inc;
+      cur_min_cost += x_inc;
     }
     for (int y = y_st; y != y_ed; y += y_inc) {
+      cur_plane += x_inc;
+      cur_min_cost += x_inc;
       for (int x = x_st; x != x_ed; x += x_inc) {
         // x-axis neighbour
-        const Plane& nx_plane = plane_[v][y][x - x_inc];
+        const Plane& nx_plane = *(cur_plane - x_inc);
         const double nx_cost =
           plane_cost->GetPlaneCost(x, y, nx_plane, v);
-        if (nx_cost < min_cost_[v][y][x]) {
-          min_cost_[v][y][x] = nx_cost;
-          plane_[v][y][x] = nx_plane;
+        if (nx_cost < *cur_min_cost) {
+          *cur_min_cost = nx_cost;
+          *cur_plane = nx_plane;
         }
         // y-axis neighbour
-        const Plane& ny_plane = plane_[v][y - y_inc][x];
+        const Plane& ny_plane = *(cur_plane - y_inc * wid_);
         const double ny_cost =
           plane_cost->GetPlaneCost(x, y, ny_plane, v);
-        if (ny_cost < min_cost_[v][y][x]) {
-          min_cost_[v][y][x] = ny_cost;
-          plane_[v][y][x] = ny_plane;
+        if (ny_cost < *cur_min_cost) {
+          *cur_min_cost = ny_cost;
+          *cur_plane = ny_plane;
         }
+        cur_plane += x_inc;
+        cur_min_cost += x_inc;
       }
     }
   } // end for view
@@ -164,32 +190,37 @@ void ViewPropagation(const IPlaneCost* plane_cost);
 void CSPatchMatch::ViewPropagation(const IPlaneCost* plane_cost) {
 
   cout << "\t\t View Propagation" << endl;
+  Plane* current_plane = plane_;
+  double* current_min_cost = min_cost_;
   for (RefView v = kLeft; v <= kRight; v = RefView(v + 1)) {
     int other_view = 1 - v;
+    Plane* other_plane = plane_ + other_view * hei_ * wid_;
     cout << "\t\t\t view: " << v << endl;
     // iterate all other view pixels
     for (int y = 0; y < hei_; ++y) {
       for (int x = 0; x < wid_; ++x) {
-        Vec3d param = plane_[other_view][y][x].param();
+        Vec3d param = other_plane->param();
         double disp = param[0] * x + param[1] * y + param[2];
         // get corresponding pixel in reference view
         int cor_x = 0;
         if (v == kLeft) {
-          cor_x = HandleBorder(x + round(disp), wid_);
+          cor_x = HandleBorder(x + Round2Int(disp), wid_);
         } else {
-          cor_x = HandleBorder(x - round(disp), wid_);
+          cor_x = HandleBorder(x - Round2Int(disp), wid_);
         }
         // update corresponding pixel's plane
-        const Plane& cor_plane = plane_[other_view][y][x];
         const double cor_cost = 
-          plane_cost->GetPlaneCost(cor_x, y, cor_plane, v);
-        if (cor_cost < min_cost_[v][y][cor_x]) {
-          min_cost_[v][y][cor_x] = cor_cost;
-          plane_[v][y][cor_x] = cor_plane;
+          plane_cost->GetPlaneCost(cor_x, y, *other_plane, v);
+        if (cor_cost < current_min_cost[cor_x]) {
+          current_min_cost[cor_x] = cor_cost;
+          current_plane[cor_x] = *other_plane;
         }
-      }
-    }
-  }
+        ++other_plane;
+      } // for x
+      current_plane += wid_;
+      current_min_cost += wid_;
+    } // for y
+  } // for view
 }
 
 ///////////////////////////////////////////////////////
@@ -219,14 +250,14 @@ void CSPatchMatch::PlaneRefinement(const double& z_max,
   Vec3d disturb_norm(0.0, 0.0, 0.0);
   while (z_iter >= z_thres) {
     cout << "\t\t\t pf iter cur z_max: " << z_iter << endl;
+    Plane* cur_plane = plane_;
+    double* cur_min_cost = min_cost_;
     for (RefView v = kLeft; v <= kRight; v = RefView(v + 1)) {
-      #pragma omp parallel for 
+      // #pragma omp parallel for 
       for (int y = 0; y < hei_; ++y) {
         //Plane*  cur_plane = plane_[v][y];
         //double* cur_min_cost = min_cost_[v][y];
         for (int x = 0; x < wid_; ++x) {
-          Plane*  cur_plane = &plane_[v][y][x];
-          double* cur_min_cost = &min_cost_[v][y][x];
           Vec3d org_plane_param = cur_plane->param();
           // distrub point (x, y, z)
           double disturb_z = org_plane_param[0] * x +
@@ -252,8 +283,8 @@ void CSPatchMatch::PlaneRefinement(const double& z_max,
             *cur_plane = disturb_plane;
             *cur_min_cost = distrub_cost;
           }
-          //++cur_plane;
-          //++cur_min_cost;
+          ++cur_plane;
+          ++cur_min_cost;
         }
       }
     }
@@ -297,6 +328,7 @@ void CSPatchMatch::LeftRightCheck(int** valid) {
 }
 void CSPatchMatch::FillInvalid(int** valid) {
   cout << "\t\t\t fill invalid pixel" << endl;
+  Plane* cur_plane = plane_;
   for (int v = kLeft; v <= kRight; v = RefView(v + 1)) {
     int* cur_valid = valid[v];
     for (int y = 0; y < hei_; y++) {
@@ -327,9 +359,9 @@ void CSPatchMatch::FillInvalid(int** valid) {
           // set x's depth to the lowest one
           if (l_find && r_find) {
             double l_first_disp =
-              plane_[v][y][l_first].param().dot(Vec3d(x, y, 1.0));
+              cur_plane[l_first].param().dot(Vec3d(x, y, 1.0));
             double r_first_disp = 
-              plane_[v][y][r_first].param().dot(Vec3d(x, y, 1.0));
+              cur_plane[r_first].param().dot(Vec3d(x, y, 1.0));
             if (l_first_disp <= r_first_disp) {
               l_first_disp *= dis_scale_;
               dis_data[x] = static_cast<uchar>(
@@ -343,14 +375,14 @@ void CSPatchMatch::FillInvalid(int** valid) {
             }
           } else if (l_find) {
             double l_first_disp =
-              plane_[v][y][l_first].param().dot(Vec3d(x, y, 1.0));
+              cur_plane[l_first].param().dot(Vec3d(x, y, 1.0));
             l_first_disp *= dis_scale_;
             dis_data[x] = static_cast<uchar>(
               HandleBorder(static_cast<int>(l_first_disp), 256)
              );
           } else if (r_find) {
-            double r_first_disp =
-              plane_[v][y][r_first].param().dot(Vec3d(x, y, 1.0));
+            double r_first_disp = 
+              cur_plane[r_first].param().dot(Vec3d(x, y, 1.0));
             r_first_disp *= dis_scale_;
             dis_data[x] = static_cast<uchar>(
               HandleBorder(static_cast<int>(r_first_disp), 256)
@@ -358,8 +390,9 @@ void CSPatchMatch::FillInvalid(int** valid) {
           } // end if l_find && r_find
         } // end if cur_valid
         cur_valid++;
-      }
-    }
+      } // end for x
+      cur_plane += wid_;
+    } // end for y
   } // end for each view
 }
 
@@ -491,14 +524,16 @@ void CSPatchMatch::PostProcessing() {
 
 void CSPatchMatch::PlaneToDisp() {
   cout << "\t\t Convert Plane to Disparity" << endl;
+  Plane* cur_plane = plane_;
   for (RefView v = kLeft; v <= kRight; v = RefView(v + 1)) {
     for (int y = 0; y < hei_; ++y) {
       uchar* dis_row = dis_[v].ptr<uchar>(y);
       for (int x = 0; x < wid_; ++x) {
         double disp = dis_scale_ *
-          plane_[v][y][x].param().dot(Vec3d(x, y, 1.0));
+          cur_plane->param().dot(Vec3d(x, y, 1.0));
         // narrow disp to [0, 255]
         dis_row[x] = saturate_cast<uchar>(static_cast<int>(disp));
+        ++cur_plane;
       }
     }
   }

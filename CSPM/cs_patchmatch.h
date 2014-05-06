@@ -38,7 +38,7 @@ class CSPatchMatch
 
  private:
 
-   void InitRandomPlane();
+   void InitRandomPlane(const IPlaneCost* plane_cost);
 
    ///////////////////////////////////////////////////////
    // Func: SpatialPropagation
@@ -103,9 +103,9 @@ class CSPatchMatch
    int max_dis_;
    int dis_scale_;
    // plane parameter
-   Plane** plane_[kViewNum];
+   Plane* plane_;
    // minimum plane cost
-   double** min_cost_[kViewNum];
+   double* min_cost_;
    // const paramters for plane refinement
    const double kMaxNorm_ = 1.0;
    const double kZStopThres_ = 0.1;
