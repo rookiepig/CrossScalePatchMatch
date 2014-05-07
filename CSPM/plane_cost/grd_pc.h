@@ -14,6 +14,7 @@
 #define TAU_CLR 10
 #define TAU_GRD 2
 #define WGT_GAMMA  10
+// #define INV_DISP_COST_SCALE 10000
 // #define USE_LAB_WGT
 
 class GrdPC : public IPlaneCost {

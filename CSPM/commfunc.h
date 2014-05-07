@@ -119,10 +119,12 @@ inline int HandleBorder(const int& loc, const int& size) {
   //  return ( loc + size ) % size;
   //}
   if (loc < 0) {
-    return 0;
+    // CV_Assert(loc + size >= 0);
+    return loc + size;
   }
   if (loc >= size) {
-    return size - 1;
+    // CV_Assert(loc - size < size);
+    return loc - size;
   }
   return loc;
 }

@@ -12,6 +12,8 @@
 
 --l_img_file="teddy_l.png" --r_img_file="teddy_r.png" --l_dis_file="teddy_ld.png" --r_dis_file="teddy_rd.png" --max_dis=60 --dis_scale=4
 
+--l_img_file="cut_teddy_l.png" --r_img_file="cut_teddy_r.png" --l_dis_file="cut_teddy_ld.png" --r_dis_file="cut_teddy_rd.png" --max_dis=60 --dis_scale=4
+
 --l_img_file="small_teddy_l.png" --r_img_file="small_teddy_r.png" --l_dis_file="small_teddy_ld.png" --r_dis_file="small_teddy_rd.png" --max_dis=15 --dis_scale=16
 
 

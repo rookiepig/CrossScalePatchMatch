@@ -10,6 +10,7 @@
 #include"commfunc.h"
 #include"plane.h"
 #include"plane_cost\i_plane_cost.h"
+// #define USE_POINTER
 
 class CSPatchMatch
 {
@@ -20,6 +21,35 @@ class CSPatchMatch
 
   ~CSPatchMatch();
 
+#ifdef MY_DEBUG
+  // function for debug usage
+  void ViewDisp(void) {
+    // view disparity
+    PlaneToDisp();
+    imshow("l_dis", dis_[kLeft]);
+    imshow("r_dis", dis_[kRight]);
+    cout << "press any key..." << endl;
+    waitKey(-1);
+  }
+  void PrintPixelInfo(const int& x, const int& y) {
+    // print pixel information
+    Plane plane = plane_[kLeft][y][x];
+    double min_cost = min_cost_[kLeft][y][x];
+    cout << "Pixel ( " << x << ", " << y << " ):" << endl;
+    cout << "\t min_cost: " << min_cost << endl;
+    cout << "\t disp: " << plane.param().dot(Vec3d(x, y, 1.0)) << endl;
+    Vec3d norm = plane.norm();
+    cout << "\t norm: " << " (" 
+         << norm[0] << " " 
+         << norm[1] << " "
+         << norm[2] << " )" << endl;
+    Point3d point = plane.point();
+    cout << "\t point: " << " (" 
+         << point.x << " " 
+         << point.y << " "
+         << point.z << " )" << endl;
+  }
+#endif
   ///////////////////////////////////////////////////////
   // Func: PatchMatch
   // Desc: perform patch match
@@ -60,13 +90,15 @@ class CSPatchMatch
    // Func: ViewPropagation
    // Desc: propagate plane params across 2 views
    // In:
+   // const int& cur_iter -- iteration number
    // const IPlaneCost* plane_cost -- iterface for 
    //                                 computing plane cost
    //
    // Out:
    // void
    ///////////////////////////////////////////////////////
-   void ViewPropagation(const IPlaneCost* plane_cost);
+   void ViewPropagation(const int& cur_iter,
+     const IPlaneCost* plane_cost);
 
    ///////////////////////////////////////////////////////
    // Func: PlaneRefinement
@@ -103,9 +135,17 @@ class CSPatchMatch
    int max_dis_;
    int dis_scale_;
    // plane parameter
+#ifdef USE_POINTER
    Plane* plane_;
+#else
+   Plane** plane_[kViewNum];
+#endif
    // minimum plane cost
+#ifdef USE_POINTER
    double* min_cost_;
+#else
+   double** min_cost_[kViewNum];
+#endif
    // const paramters for plane refinement
    const double kMaxNorm_ = 1.0;
    const double kZStopThres_ = 0.1;

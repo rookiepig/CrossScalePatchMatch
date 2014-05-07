@@ -38,14 +38,16 @@ GrdPC::GrdPC(const Mat& l_img, const Mat& r_img,
     // X Gradient
     // sobel size must be 1
     Sobel(gray, grd_x_[v], CV_16S, 1, 0, 1);
-    // grd_x_[v] += 0.5;
+    // grd_x_[v] = abs(grd_x_[v]);
+    // 3 x 3 sobel
+    // Sobel(gray, grd_x_[v], CV_16S, 1, 0);
   }
 #ifdef _DEBUG
   // view gradient image
   Mat tmp;
-  grd_x_[kLeft].convertTo(tmp, CV_8U, 1, 255);
+  grd_x_[kLeft].convertTo(tmp, CV_8U);
   imshow("l_grd", tmp);
-  grd_x_[kRight].convertTo(tmp, CV_8U, 1, 255);
+  grd_x_[kRight].convertTo(tmp, CV_8U);
   imshow("r_grd", tmp);
   waitKey(-1);
 #endif
@@ -99,11 +101,12 @@ double GrdPC::GetPlaneCost(const int& ref_x, const int& ref_y,
                 abs(lab_p[2] - lab_q[2]);
 #endif
       const double wgt = lookup_exp_[sum];
+                         // lookup_exp_[(abs(dx) + abs(dy)) / 2];
       // return exp(-sum / gamma_);
       double q_disp = plane_a * q_x + q_disp_y;
       int q_disp_floor = Floor2Int(q_disp);
       if (q_disp_floor <= 0 || q_disp_floor >= max_disp_) {
-        // impossible disparity --> largest cost
+        // impossible disparity --> very large cost
         cost += wgt * (COST_ALPHA * TAU_CLR +
           (1 - COST_ALPHA) * TAU_GRD);
       } else {
@@ -127,7 +130,7 @@ double GrdPC::GetPlaneCost(const int& ref_x, const int& ref_y,
           fabs(I_q[1] - I_ceil[1] + floor_wgt * (I_ceil[1] - I_floor[1])) +
           fabs(I_q[2] - I_ceil[2] + floor_wgt * (I_ceil[2] - I_floor[2]));
         clr_cost *= 0.3333333333;
-        const short G_floor = G_other_y[floor_x];
+        const short G_floor = abs(G_other_y[floor_x]);
         const short G_ceil = G_other_y[ceil_x];
         // interpolated gradient difference
         double grd_cost = 
