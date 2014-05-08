@@ -11,9 +11,9 @@
 #include"i_plane_cost.h"
 
 #define COST_ALPHA 0.1
-#define TAU_CLR 10
-#define TAU_GRD 2
-#define WGT_GAMMA  10
+#define TAU_CLR 10.0
+#define TAU_GRD 2.0
+#define WGT_GAMMA  10.0
 #define REG_LAMBDA 1
 
 class CSPC : public IPlaneCost {

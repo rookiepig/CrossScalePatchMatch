@@ -37,10 +37,8 @@ GrdPC::GrdPC(const Mat& l_img, const Mat& r_img,
     cvtColor(img_[v], gray, CV_BGR2GRAY);
     // X Gradient
     // sobel size must be 1
-    Sobel(gray, grd_x_[v], CV_16S, 1, 0, 1);
+    Sobel(gray, grd_x_[v], CV_64F, 1, 0, 1);
     // grd_x_[v] = abs(grd_x_[v]);
-    // 3 x 3 sobel
-    // Sobel(gray, grd_x_[v], CV_16S, 1, 0);
   }
 #ifdef _DEBUG
   // view gradient image
@@ -60,6 +58,7 @@ GrdPC::GrdPC(const Mat& l_img, const Mat& r_img,
 
 GrdPC::~GrdPC(void) {
   // do nothing
+  delete[] lookup_exp_;
 }
 
 double GrdPC::GetPlaneCost(const int& ref_x, const int& ref_y,
@@ -67,9 +66,9 @@ double GrdPC::GetPlaneCost(const int& ref_x, const int& ref_y,
 
   double cost = 0.0;
   Vec3d plane_param = plane.param();
-  double plane_a = plane_param[0];
-  double plane_b = plane_param[1];
-  double plane_c = plane_param[2];
+  const double plane_a = plane_param[0];
+  const double plane_b = plane_param[1];
+  const double plane_c = plane_param[2];
   const uchar* I_p = img_[view].ptr<uchar>(ref_y) + 3 * ref_x;
 #ifdef USE_LAB_WGT
   const uchar* lab_p = lab_[view].ptr<uchar>(ref_y) + 3 * ref_x;
@@ -81,28 +80,26 @@ double GrdPC::GetPlaneCost(const int& ref_x, const int& ref_y,
     const uchar* lab_q_y = lab_[view].ptr<uchar>(q_y);
 #endif
     const uchar* I_ohter_y = img_[1 - view].ptr<uchar>(q_y);
-    const short* G_q_y     = grd_x_[view].ptr<short>(q_y);
-    const short* G_other_y = grd_x_[1 - view].ptr<short>(q_y);
+    const double* G_q_y     = grd_x_[view].ptr<double>(q_y);
+    const double* G_other_y = grd_x_[1 - view].ptr<double>(q_y);
     const double q_disp_y = plane_b * q_y + plane_c;
     for (int dx = -half_wnd_; dx <= half_wnd_; ++dx) {
       int q_x = HandleBorder(ref_x + dx, wid_);
       // const double wgt = GetCostWeight(ref_x, ref_y, q_x, q_y,
       //   view);
       // assume three channel
-#ifndef USE_LAB_WGT
-      const uchar* I_q = I_q_y + 3 * q_x;
-      int sum = abs(I_p[0] - I_q[0]) +
-                abs(I_p[1] - I_q[1]) +
-                abs(I_p[2] - I_q[2]);
-#else
+#ifdef USE_LAB_WGT
       const uchar* lab_q = lab_q_y + 3 * q_x;
       int sum = abs(lab_p[0] - lab_q[0]) +
                 abs(lab_p[1] - lab_q[1]) +
                 abs(lab_p[2] - lab_q[2]);
+#else
+      const uchar* I_q = I_q_y + 3 * q_x;
+      int sum = abs(I_p[0] - I_q[0]) +
+                abs(I_p[1] - I_q[1]) +
+                abs(I_p[2] - I_q[2]);
 #endif
       const double wgt = lookup_exp_[sum];
-                         // lookup_exp_[(abs(dx) + abs(dy)) / 2];
-      // return exp(-sum / gamma_);
       double q_disp = plane_a * q_x + q_disp_y;
       int q_disp_floor = Floor2Int(q_disp);
       if (q_disp_floor <= 0 || q_disp_floor >= max_disp_) {
@@ -129,9 +126,9 @@ double GrdPC::GetPlaneCost(const int& ref_x, const int& ref_y,
           fabs(I_q[0] - I_ceil[0] + floor_wgt * (I_ceil[0] - I_floor[0])) +
           fabs(I_q[1] - I_ceil[1] + floor_wgt * (I_ceil[1] - I_floor[1])) +
           fabs(I_q[2] - I_ceil[2] + floor_wgt * (I_ceil[2] - I_floor[2]));
-        clr_cost *= 0.3333333333;
-        const short G_floor = abs(G_other_y[floor_x]);
-        const short G_ceil = G_other_y[ceil_x];
+        clr_cost *= 0.33333333333333;
+        const double G_floor = G_other_y[floor_x];
+        const double G_ceil  = G_other_y[ceil_x];
         // interpolated gradient difference
         double grd_cost = 
           fabs(G_q_y[q_x] - G_ceil + floor_wgt * (G_ceil - G_floor));
@@ -188,10 +185,10 @@ inline double GrdPC::GetPixelCost(const int& ref_x,
     fabs(I_q[2] - I_ceil[2] + floor_wgt * (I_ceil[2] - I_floor[2]));
   // for (int c = 0; c < 3; ++c) {
   // } 
-  const short G_q = *(grd_x_[view].ptr<short>(ref_y) +ref_x);
-  const short* G_other_y = grd_x_[1 - view].ptr<short>(other_y);
-  const short G_floor = G_other_y[floor_x];
-  const short G_ceil = G_other_y[ceil_x];
+  const double G_q = *(grd_x_[view].ptr<double>(ref_y) +ref_x);
+  const double* G_other_y = grd_x_[1 - view].ptr<double>(other_y);
+  const double G_floor = G_other_y[floor_x];
+  const double G_ceil = G_other_y[ceil_x];
   // interpolated gradient difference
   double grd_cost = 
     fabs(G_q - G_ceil + floor_wgt * (G_ceil - G_floor));

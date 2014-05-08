@@ -128,4 +128,5 @@ inline int HandleBorder(const int& loc, const int& size) {
   }
   return loc;
 }
-#define MY_DEBUG
+// #define MY_DEBUG
+// #define USE_OMP

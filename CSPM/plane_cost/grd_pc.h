@@ -11,9 +11,9 @@
 #include"i_plane_cost.h"
 
 #define COST_ALPHA 0.1
-#define TAU_CLR 10
-#define TAU_GRD 2
-#define WGT_GAMMA  10
+#define TAU_CLR 10.0
+#define TAU_GRD 2.0
+#define WGT_GAMMA  10.0
 // #define INV_DISP_COST_SCALE 10000
 // #define USE_LAB_WGT
 

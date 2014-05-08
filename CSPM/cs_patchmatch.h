@@ -10,7 +10,6 @@
 #include"commfunc.h"
 #include"plane.h"
 #include"plane_cost\i_plane_cost.h"
-// #define USE_POINTER
 
 class CSPatchMatch
 {
@@ -125,6 +124,8 @@ class CSPatchMatch
 
    void PlaneToDisp();
 
+   // random number generator
+   RNG rng_;
    // color image
    Mat img_[kViewNum];
    // disparity image
@@ -135,17 +136,9 @@ class CSPatchMatch
    int max_dis_;
    int dis_scale_;
    // plane parameter
-#ifdef USE_POINTER
-   Plane* plane_;
-#else
    Plane** plane_[kViewNum];
-#endif
    // minimum plane cost
-#ifdef USE_POINTER
-   double* min_cost_;
-#else
    double** min_cost_[kViewNum];
-#endif
    // const paramters for plane refinement
    const double kMaxNorm_ = 1.0;
    const double kZStopThres_ = 0.1;
