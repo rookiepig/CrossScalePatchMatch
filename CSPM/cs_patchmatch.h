@@ -60,8 +60,8 @@ class CSPatchMatch
   // Out:
   // OutputParam
   ///////////////////////////////////////////////////////
-  void PatchMatch(const int& iter_num,
-    const IPlaneCost* plane_cost);
+  void PatchMatch(const int& iter_num, 
+    const IPlaneCost* plane_cost, const bool& use_pp);
 
   Mat& dis(const RefView& view);
 

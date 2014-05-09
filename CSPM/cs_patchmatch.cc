@@ -50,7 +50,7 @@ CSPatchMatch::~CSPatchMatch() {
 }
 
 void CSPatchMatch::PatchMatch(const int& iter_num, 
-  const IPlaneCost* plane_cost) {
+  const IPlaneCost* plane_cost, const bool& use_pp) {
   cout << "\t Patch Match" << endl;
 
   InitRandomPlane(plane_cost);
@@ -103,7 +103,9 @@ void CSPatchMatch::PatchMatch(const int& iter_num,
   }
   PlaneToDisp();
   //for (int i = 0; i < 3; ++i) {
-  //PostProcessing();
+  if (use_pp) {
+    PostProcessing();
+  }
   //}
 }
 
@@ -340,34 +342,23 @@ void CSPatchMatch::PlaneRefinement(const double& z_max,
 
 void CSPatchMatch::LeftRightCheck(int** valid) {
   cout << "\t\t\t left-right check" << endl;
-  int* l_valid = valid[kLeft];
-  int* r_valid = valid[kRight];
-  for (int y = 0; y < hei_; y++) {
-    uchar* l_dis_data = dis_[kLeft].ptr<uchar>(y);
-    uchar* r_dis_data = dis_[kRight].ptr<uchar>(y);
-    for (int x = 0; x < wid_; x++) {
-      // check left image
-      double l_disp = l_dis_data[x] * 1.0 / dis_scale_;
-      int r_loc = x - Round2Int(l_disp);
-      if (r_loc >= 0 && r_loc < wid_) {
-        double r_disp = r_dis_data[r_loc] * 1.0 / dis_scale_;
-        // disparity should not be zero
-        if (fabs(l_disp - r_disp) <= 1.0 && l_disp > 0.0) {
-          *l_valid = 1;
+  for (int v = kLeft; v <= kRight; v = RefView(v + 1)) {
+    int* cur_valid = valid[v];
+    for (int y = 0; y < hei_; y++) {
+      uchar* cur_dis_row = dis_[v].ptr<uchar>(y);
+      uchar* other_dis_row = dis_[1 - v].ptr<uchar>(y);
+      for (int x = 0; x < wid_; x++) {
+        double cur_dis = cur_dis_row[x] * 1.0 / dis_scale_;
+        int other_x = x + (2 * v - 1) * Round2Int(cur_dis);
+        if (other_x >= 0 && other_x < wid_) {
+          double other_dis = other_dis_row[other_x] * 1.0 / dis_scale_;
+          // disparity should not be zero
+          if (fabs(cur_dis - other_dis) < 0.5 && cur_dis > 0.0) {
+            *cur_valid = 1;
+          }
         }
+        ++cur_valid;
       }
-      // check right image
-      double r_disp = r_dis_data[x] * 1.0 / dis_scale_;
-      int l_loc = x + Round2Int(r_disp);
-      if (l_loc >= 0 && l_loc < wid_) {
-        l_disp = l_dis_data[l_loc] * 1.0 / dis_scale_;
-        // disparity should not be zero
-        if (fabs(r_disp - l_disp) <= 1.0 && r_disp > 0) {
-          *r_valid = 1;
-        }
-      }
-      ++l_valid;
-      ++r_valid;
     }
   }
 }
@@ -375,10 +366,10 @@ void CSPatchMatch::FillInvalid(int** valid) {
   cout << "\t\t\t fill invalid pixel" << endl;
   for (int v = kLeft; v <= kRight; v = RefView(v + 1)) {
     int* cur_valid = valid[v];
-    for (int y = 0; y < hei_; y++) {
+    for (int y = 0; y < hei_; ++y){
       int* y_valid = valid[v] + y * wid_;
       uchar* dis_data = dis_[v].ptr<uchar>(y);
-      for (int x = 0; x < wid_; x++) {
+      for (int x = 0; x < wid_; ++x) {
         if (*cur_valid == 0) {
           // find left first valid pixel
           int l_first = x;
@@ -492,7 +483,7 @@ void CSPatchMatch::WeightedMedian(int** valid,
           }
           // set new disparity
           cur_dis[x] = median_disp;
-        }
+        } // end if (*cur_valid)
         cur_valid++;
       }
     }
@@ -510,7 +501,7 @@ void CSPatchMatch::PostProcessing() {
   // left-right check
   LeftRightCheck(valid);
 
-// #define VIEW_PP
+//#define VIEW_PP
 #ifdef VIEW_PP
   // visualize valid
   Mat tmp(hei_, wid_, CV_8UC1);
@@ -528,6 +519,7 @@ void CSPatchMatch::PostProcessing() {
    imshow("l_valid", tmp);
    imwrite("l_valid.png", tmp);
    imshow("l_raw", dis_[kLeft]);
+   imshow("r_raw", dis_[kRight]);
    imwrite("l_raw.png", dis_[kLeft]);
    waitKey(-1);
 #endif

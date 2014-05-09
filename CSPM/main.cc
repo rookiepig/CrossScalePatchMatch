@@ -24,7 +24,7 @@ DEFINE_string(r_dis_file, "r_dis.png",
   "output right disparity file name");
 DEFINE_int32(max_dis, 0, "max allowed disparity range");
 DEFINE_int32(dis_scale, 0, "disparity re-scaling factor");
-
+DEFINE_bool(use_pp, false, "enable post-processing");
 
 int main(int argc, char** argv) {
   cout << "PatchMatch Stereo Matching" << endl;
@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
   // CSPC* plane_cost = new CSPC(l_img, r_img, FLAGS_max_dis, wnd_size, 5);
   // , alpha, tau_color, tau_grd, gamma);
   
-  patch_match->PatchMatch(max_iter, plane_cost);
+  patch_match->PatchMatch(max_iter, plane_cost, FLAGS_use_pp);
 
   // record time
   duration = static_cast<double>(getTickCount()) - duration;
