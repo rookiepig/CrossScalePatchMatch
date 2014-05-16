@@ -13,6 +13,7 @@
 #define COST_ALPHA 0.1
 #define TAU_CLR 10.0
 #define TAU_GRD 2.0
+// 10 * 3 = 30 means divide color by 3
 #define WGT_GAMMA  10.0
 #define REG_LAMBDA 1
 
@@ -54,6 +55,7 @@ class CSPC : public IPlaneCost {
    // method paramter
    int* max_disp_;
    int wnd_size_;
+   int half_wnd_;
    //double alpha_;    // balance color and gradient cost
    //double tau_clr_;  // threshold for color cost
    //double tau_grd_;  // threshold for gradient cost

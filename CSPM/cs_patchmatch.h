@@ -11,6 +11,8 @@
 #include"plane.h"
 #include"plane_cost\i_plane_cost.h"
 
+#define WMF_GAMMA 10.0
+
 class CSPatchMatch
 {
  public:

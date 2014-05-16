@@ -13,7 +13,14 @@
 #define COST_ALPHA 0.1
 #define TAU_CLR 10.0
 #define TAU_GRD 2.0
+// 10 * 3 = 30 means divide color by 3
 #define WGT_GAMMA  10.0
+
+// #define USE_BORDER
+//#define USE_INTER
+#ifdef USE_INTER
+#define INTER_SIZE 10.0
+#endif
 // #define INV_DISP_COST_SCALE 10000
 // #define USE_LAB_WGT
 
@@ -44,6 +51,11 @@ class GrdPC : public IPlaneCost {
    Mat lab_[kViewNum];
    // gradient along x axis
    Mat grd_x_[kViewNum];
+#ifdef USE_INTER
+   Mat inter_img_[kViewNum];    // interpolated image
+   Mat inter_grd_x_[kViewNum];    // interpolated gradient
+   int inter_wid_;
+#endif
    // image property
    int wid_;
    int hei_;

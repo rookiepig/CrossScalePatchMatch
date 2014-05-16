@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="commfunc.h" />
     <ClInclude Include="cs_patchmatch.h" />
+    <ClInclude Include="ctmf.h" />
     <ClInclude Include="plane.h" />
     <ClInclude Include="plane_cost\cspc.h" />
     <ClInclude Include="plane_cost\grd_pc.h" />
@@ -28,6 +29,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cs_patchmatch.cc" />
+    <ClCompile Include="ctmf.c" />
     <ClCompile Include="main.cc" />
     <ClCompile Include="plane_cost\cspc.cc" />
     <ClCompile Include="plane_cost\grd_pc.cc" />
@@ -164,6 +166,7 @@
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <FloatingPointModel>Fast</FloatingPointModel>
       <OpenMPSupport>true</OpenMPSupport>
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

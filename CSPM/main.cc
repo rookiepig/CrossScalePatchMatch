@@ -67,8 +67,8 @@ int main(int argc, char** argv) {
   //const double tau_grd   = 2.0  / 255.0;
   //const double gamma     = 10.0;
 
-  GrdPC* plane_cost = new GrdPC(l_img, r_img, FLAGS_max_dis, wnd_size);
-  // CSPC* plane_cost = new CSPC(l_img, r_img, FLAGS_max_dis, wnd_size, 5);
+  // GrdPC* plane_cost = new GrdPC(l_img, r_img, FLAGS_max_dis, wnd_size);
+  CSPC* plane_cost = new CSPC(l_img, r_img, FLAGS_max_dis, wnd_size, 5);
   // , alpha, tau_color, tau_grd, gamma);
   
   patch_match->PatchMatch(max_iter, plane_cost, FLAGS_use_pp);

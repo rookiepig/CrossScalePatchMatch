@@ -127,6 +127,9 @@ void CSPatchMatch::InitRandomPlane(const IPlaneCost* plane_cost) {
     #pragma omp parallel for
 #endif
     for (int y = 0; y < hei_; ++y) {
+#ifdef USE_OMP
+      RNG rng(time(NULL));
+#endif
       for (int x = 0; x < wid_; ++x) {
         // rand point and norm
         double rand_dis = rng.uniform(kDoubleEps,
@@ -300,10 +303,12 @@ void CSPatchMatch::PlaneRefinement(const double& z_max,
     cout << "\t\t\t pf iter cur z_max: " << z_iter << endl;
     for (RefView v = kLeft; v <= kRight; v = RefView(v + 1)) {
 #ifdef USE_OMP
-      RNG rng(time(NULL));
-      #pragma omp parallel for private(rng)
+      #pragma omp parallel for
 #endif
       for (int y = 0; y < hei_; ++y) {
+#ifdef USE_OMP
+        RNG rng(time(NULL));
+#endif
         for (int x = 0; x < wid_; ++x) {
           // random disturbing variables
           Plane disturb_plane;
@@ -348,12 +353,13 @@ void CSPatchMatch::LeftRightCheck(int** valid) {
       uchar* cur_dis_row = dis_[v].ptr<uchar>(y);
       uchar* other_dis_row = dis_[1 - v].ptr<uchar>(y);
       for (int x = 0; x < wid_; x++) {
+        *cur_valid = 0;    // init as invalid
         double cur_dis = cur_dis_row[x] * 1.0 / dis_scale_;
         int other_x = x + (2 * v - 1) * Round2Int(cur_dis);
         if (other_x >= 0 && other_x < wid_) {
           double other_dis = other_dis_row[other_x] * 1.0 / dis_scale_;
           // disparity should not be zero
-          if (fabs(cur_dis - other_dis) < 0.5 && cur_dis > 0.0) {
+          if (fabs(cur_dis - other_dis) <= 0.5 && cur_dis > 0.0) {
             *cur_valid = 1;
           }
         }
@@ -446,31 +452,37 @@ void CSPatchMatch::WeightedMedian(int** valid,
           double sum_wgt = 0.0f;
           // set disparity histogram by bilateral weight
           for (int wy = -half_wnd; wy <= half_wnd; wy++) {
-            const int qy = HandleBorder(y + wy, hei_);
-            // int* qLValid = lValid + qy * wid;
-            const uchar* qL = img_[v].ptr<uchar>(qy);
-            const uchar* q_dis_data = dis_[v].ptr<uchar>(qy);
-            for (int wx = -half_wnd; wx <= half_wnd; wx++) {
-              const int qx = HandleBorder(x + wx, wid_);
-              // invalid pixel also used
-              // if( qLValid[ qx ] && wx != 0 && wy != 0 ) {
-              const int q_disp = static_cast<int>(q_dis_data[qx]);
-              if (q_disp >= 0) {
-                // double disWgt = wx * wx + wy * wy;
-                // disWgt = sqrt( disWgt );
-                const uchar* qL_x = qL + 3 * qx;
-                int clr_diff =
-                  abs(pL_x[0] - qL_x[0]) +
-                  abs(pL_x[1] - qL_x[1]) +
-                  abs(pL_x[2] - qL_x[2]);
-                // clrWgt = sqrt( clrWgt );
-                double wgt = lookup_exp[clr_diff];
-                disp_hist[q_disp] += wgt;
-                sum_wgt += wgt;
-              }
-              // }
-            }
-          }
+            // const int qy = HandleBorder(y + wy, hei_);
+            const int qy = y + wy;
+            if (qy >= 0 && qy < hei_) {
+              int* qLValid = valid[v] + qy * wid_;
+              const uchar* qL = img_[v].ptr<uchar>(qy);
+              const uchar* q_dis_data = dis_[v].ptr<uchar>(qy);
+              for (int wx = -half_wnd; wx <= half_wnd; wx++) {
+                // const int qx = HandleBorder(x + wx, wid_);
+                const int qx = x + wx;
+                if (qx >= 0 && qx < wid_) {
+                  // invalid pixel also used
+                  if (qLValid[qx]) { // only use valid pixels
+                    const int q_disp = static_cast<int>(q_dis_data[qx]);
+                    if (q_disp >= 0) {
+                      // double disWgt = wx * wx + wy * wy;
+                      // disWgt = sqrt( disWgt );
+                      const uchar* qL_x = qL + 3 * qx;
+                      int clr_diff =
+                        abs(pL_x[0] - qL_x[0]) +
+                        abs(pL_x[1] - qL_x[1]) +
+                        abs(pL_x[2] - qL_x[2]);
+                      // clrWgt = sqrt( clrWgt );
+                      double wgt = lookup_exp[clr_diff];
+                      disp_hist[q_disp] += wgt;
+                      sum_wgt += wgt;
+                    }
+                  } // end if qLValid[qx]
+                } // end if qx >= 0 && qx < wid_
+              } // end for wx
+            } // end if qy >=0 && qy < hei_
+          } // end for wy
           double median_wgt = sum_wgt / 2.0;
           sum_wgt = 0.0;
           int median_disp = 0;
@@ -481,13 +493,15 @@ void CSPatchMatch::WeightedMedian(int** valid,
               break;
             }
           }
-          // set new disparity
-          cur_dis[x] = median_disp;
+          if (median_wgt > 0.0) {
+            // when weight added set new disparity
+            cur_dis[x] = median_disp;
+          }
         } // end if (*cur_valid)
         cur_valid++;
-      }
-    }
-  }
+      } // end for each x
+    } // end for each y
+  } // end for each view
   delete[] disp_hist;
   delete[] lookup_exp;
 }
@@ -498,10 +512,11 @@ void CSPatchMatch::PostProcessing() {
   for (int v = kLeft; v <= kRight; v = RefView(v + 1)) {
     valid[v] = new int[hei_ * wid_]();    // set to 0 (invalid)
   }
+
   // left-right check
   LeftRightCheck(valid);
 
-//#define VIEW_PP
+// #define VIEW_PP
 #ifdef VIEW_PP
   // visualize valid
   Mat tmp(hei_, wid_, CV_8UC1);
@@ -521,23 +536,44 @@ void CSPatchMatch::PostProcessing() {
    imshow("l_raw", dis_[kLeft]);
    imshow("r_raw", dis_[kRight]);
    imwrite("l_raw.png", dis_[kLeft]);
+   imwrite("r_raw.png", dis_[kRight]);
    waitKey(-1);
 #endif
 
   // fill invalid
   FillInvalid(valid);
 
+  // another left-right check
+  // LeftRightCheck(valid);
+
 #ifdef VIEW_PP
-   imshow("l_fill", dis_[kLeft]);
-   imwrite("l_fill.png", dis_[kLeft]);
-   waitKey(-1);
+  p_valid = valid[kLeft];
+  for (int y = 0; y < hei_; ++y) {
+    for (int x = 0; x < wid_; ++x) {
+      if (*p_valid) {
+        tmp.at<uchar>(y, x) = 255;
+      }
+      else {
+        tmp.at<uchar>(y, x) = 0;
+      }
+      ++p_valid;
+    }
+  }
+  imshow("l_fill_valid", tmp);
+  imshow("l_fill", dis_[kLeft]);
+  imshow("r_fill", dis_[kRight]);
+  imwrite("l_fill.png", dis_[kLeft]);
+  imwrite("r_fill.png", dis_[kRight]);
+  waitKey(-1);
 #endif
 
   // weighted median filter
   const int wnd_size = 35;
-  const double gamma = 10.0;
-  WeightedMedian(valid, wnd_size, gamma);
-
+  // divide l1 with 3? or not?
+  WeightedMedian(valid, wnd_size, WMF_GAMMA);
+  // normal median filter
+  MeanFilter(dis_[kLeft], dis_[kLeft], 2);
+  MeanFilter(dis_[kRight], dis_[kRight], 2);
 #ifdef VIEW_PP
   imshow("l_final", dis_[kLeft]);
   waitKey(-1);

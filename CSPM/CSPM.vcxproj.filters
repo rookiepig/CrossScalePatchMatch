@@ -36,6 +36,9 @@
     <ClInclude Include="plane_cost\cspc.h">
       <Filter>plane_cost</Filter>
     </ClInclude>
+    <ClInclude Include="ctmf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cs_patchmatch.cc">
@@ -49,6 +52,9 @@
     </ClCompile>
     <ClCompile Include="plane_cost\cspc.cc">
       <Filter>plane_cost</Filter>
+    </ClCompile>
+    <ClCompile Include="ctmf.c">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

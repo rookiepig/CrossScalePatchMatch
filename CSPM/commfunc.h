@@ -15,11 +15,13 @@
 #include<cstdlib>
 #include<gflags\gflags.h>
 #include<omp.h>
+#include"ctmf.h"
 using namespace std;
 using namespace cv;
 
 const int kViewNum = 2;
-const double kDoubleEps = numeric_limits<double>::epsilon();
+// not use too small eps to avoid overflow
+const double kDoubleEps = 0.00000001;
 const double kDoubleMax = numeric_limits<double>::max();
 
 enum RefView{ kLeft = 0, kRight = 1 };
@@ -112,6 +114,11 @@ inline int Round2Int(double d) {
   return ((int*)&d)[0];    // 0 for little endian, 1 for big endian
 }
 
+
+inline double FastFabs(double x) {
+  int tmp = (int&)x & 0x7FFFFFFFFFFFFFFF;
+  return (double&)tmp;
+}
 // handle image border
 inline int HandleBorder(const int& loc, const int& size) {
   //if (loc < 0 || loc >= size) {
@@ -121,12 +128,38 @@ inline int HandleBorder(const int& loc, const int& size) {
   if (loc < 0) {
     // CV_Assert(loc + size >= 0);
     return loc + size;
+    // return 0;
   }
   if (loc >= size) {
     // CV_Assert(loc - size < size);
     return loc - size;
+    // return size - 1;
   }
   return loc;
 }
+
+
+inline void MeanFilter(cv::InputArray iImage_, cv::OutputArray oImage_, int r) {
+  cv::Mat iImage = iImage_.getMat();
+  cv::Size imageSize = iImage.size();
+  CV_Assert(iImage.depth() == CV_8U);
+
+  cv::Mat tmp(imageSize, iImage.type());
+  ctmf(iImage.data, tmp.data, imageSize.width, imageSize.height,
+    iImage.step1(), tmp.step1(), r,
+    iImage.channels(), imageSize.area() * iImage.channels());
+
+  if (oImage_.getMat().size() != imageSize || oImage_.getMat().depth() != CV_8U || oImage_.getMat().type() != CV_8UC1) {
+    oImage_.create(imageSize, iImage.type());
+  }
+
+  tmp.copyTo(oImage_.getMat());
+}
+
+// handle image border macro
+//#define HANDLE_BORDER(loc, size) \
+//  ((loc) < 0 ? (loc)+(size) : \
+//  ((loc) >= (size) ? (loc)-(size) : (loc)))
+//
 // #define MY_DEBUG
-// #define USE_OMP
+#define USE_OMP

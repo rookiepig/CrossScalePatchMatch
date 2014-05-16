@@ -39,7 +39,15 @@ GrdPC::GrdPC(const Mat& l_img, const Mat& r_img,
     // sobel size must be 1
     Sobel(gray, grd_x_[v], CV_64F, 1, 0, 1);
     // grd_x_[v] = abs(grd_x_[v]);
-  }
+#ifdef USE_INTER
+    // interpolate image
+    inter_wid_ = static_cast<int>(INTER_SIZE * wid_);
+    resize(img_[v], inter_img_[v], Size(), 
+      INTER_SIZE, 1, INTER_CUBIC);
+    resize(grd_x_[v], inter_grd_x_[v], Size(), 
+      INTER_SIZE, 1, INTER_CUBIC);
+#endif
+  } // end for each view
 #ifdef _DEBUG
   // view gradient image
   Mat tmp;
@@ -74,78 +82,99 @@ double GrdPC::GetPlaneCost(const int& ref_x, const int& ref_y,
   const uchar* lab_p = lab_[view].ptr<uchar>(ref_y) + 3 * ref_x;
 #endif
   for (int dy = -half_wnd_; dy <= half_wnd_; ++dy) {
-    int q_y = HandleBorder(ref_y + dy, hei_);
-    const uchar* I_q_y     = img_[view].ptr<uchar>(q_y);
-#ifdef USE_LAB_WGT
-    const uchar* lab_q_y = lab_[view].ptr<uchar>(q_y);
-#endif
-    const uchar* I_ohter_y = img_[1 - view].ptr<uchar>(q_y);
-    const double* G_q_y     = grd_x_[view].ptr<double>(q_y);
-    const double* G_other_y = grd_x_[1 - view].ptr<double>(q_y);
-    const double q_disp_y = plane_b * q_y + plane_c;
-    for (int dx = -half_wnd_; dx <= half_wnd_; ++dx) {
-      int q_x = HandleBorder(ref_x + dx, wid_);
-      // const double wgt = GetCostWeight(ref_x, ref_y, q_x, q_y,
-      //   view);
-      // assume three channel
-#ifdef USE_LAB_WGT
-      const uchar* lab_q = lab_q_y + 3 * q_x;
-      int sum = abs(lab_p[0] - lab_q[0]) +
-                abs(lab_p[1] - lab_q[1]) +
-                abs(lab_p[2] - lab_q[2]);
+    //int q_y = HandleBorder(ref_y + dy, hei_);
+    int q_y = ref_y + dy;
+    if (q_y >= 0 && q_y < hei_) {
+      const uchar* I_q_y = img_[view].ptr<uchar>(q_y);
+      const double* G_q_y = grd_x_[view].ptr<double>(q_y);
+#ifdef USE_INTER
+      const uchar* I_inter_other_y = inter_img_[1 - view].ptr<uchar>(q_y);
+      const double* G_inter_other_y = inter_grd_x_[1 - view].ptr<double>(q_y);
 #else
-      const uchar* I_q = I_q_y + 3 * q_x;
-      int sum = abs(I_p[0] - I_q[0]) +
-                abs(I_p[1] - I_q[1]) +
-                abs(I_p[2] - I_q[2]);
+      const uchar* I_ohter_y = img_[1 - view].ptr<uchar>(q_y);
+      const double* G_other_y = grd_x_[1 - view].ptr<double>(q_y);
 #endif
-      const double wgt = lookup_exp_[sum];
-      double q_disp = plane_a * q_x + q_disp_y;
-      int q_disp_floor = Floor2Int(q_disp);
-      if (q_disp_floor <= 0 || q_disp_floor >= max_disp_) {
-        // impossible disparity --> very large cost
-        cost += wgt * (COST_ALPHA * TAU_CLR +
-          (1 - COST_ALPHA) * TAU_GRD);
-      } else {
-        const double other_x = q_x + (2 * view - 1) * q_disp;
-        // cost += wgt * GetPixelCost(q_x, q_y, other_x, q_y, view);
-       //if (other_x > numeric_limits<int>::max()) {
-       //   cout << "error: int overflow, other_x is " << other_x << endl;
-       // }
-        int floor_x = Floor2Int(other_x);
-        int ceil_x = floor_x + 1;
-        const double floor_wgt = ceil_x - other_x;
-        // handle special border
-        floor_x = HandleBorder(floor_x, wid_);
-        ceil_x  = HandleBorder(ceil_x, wid_);
-        // 1 - view --> other view
-        const uchar* I_floor = I_ohter_y + 3 * floor_x;
-        const uchar* I_ceil = I_ohter_y + 3 * ceil_x;
-        // interpolated color difference
-        double clr_cost = 
-          fabs(I_q[0] - I_ceil[0] + floor_wgt * (I_ceil[0] - I_floor[0])) +
-          fabs(I_q[1] - I_ceil[1] + floor_wgt * (I_ceil[1] - I_floor[1])) +
-          fabs(I_q[2] - I_ceil[2] + floor_wgt * (I_ceil[2] - I_floor[2]));
-        clr_cost *= 0.33333333333333;
-        const double G_floor = G_other_y[floor_x];
-        const double G_ceil  = G_other_y[ceil_x];
-        // interpolated gradient difference
-        double grd_cost = 
-          fabs(G_q_y[q_x] - G_ceil + floor_wgt * (G_ceil - G_floor));
-
-        // clr_cost = clr_cost > TAU_CLR ? TAU_CLR : clr_cost;
-        if (clr_cost > TAU_CLR) {
-          clr_cost = TAU_CLR;
-        }
-        // grd_cost = grd_cost > TAU_GRD ? TAU_GRD : grd_cost;
-        if (grd_cost > TAU_GRD) {
-          grd_cost = TAU_GRD;
-        }
-        cost += wgt * (
-          COST_ALPHA * clr_cost + (1 - COST_ALPHA) * grd_cost );
-      }
-    }
-  }
+#ifdef USE_LAB_WGT
+      const uchar* lab_q_y = lab_[view].ptr<uchar>(q_y);
+#endif
+      const double q_disp_y = plane_b * q_y + plane_c;
+      for (int dx = -half_wnd_; dx <= half_wnd_; ++dx) {
+        // int q_x = HandleBorder(ref_x + dx, wid_);
+        int q_x = ref_x + dx;
+        if (q_x >= 0 && q_x < wid_) {
+          // assume 3-channel!
+#ifdef USE_LAB_WGT
+          const uchar* lab_q = lab_q_y + 3 * q_x;
+          int sum = abs(lab_p[0] - lab_q[0]) +
+            abs(lab_p[1] - lab_q[1]) +
+            abs(lab_p[2] - lab_q[2]);
+#else
+          const uchar* I_q = I_q_y + 3 * q_x;
+          int sum = abs(I_p[0] - I_q[0]) +
+            abs(I_p[1] - I_q[1]) +
+            abs(I_p[2] - I_q[2]);
+#endif
+          // bug? sum / 3?
+          const double wgt = lookup_exp_[sum];
+          double q_disp = plane_a * (ref_x + dx) + q_disp_y;
+          int q_disp_floor = static_cast<int>(q_disp);
+          if (q_disp_floor <= 0 || q_disp_floor >= max_disp_) {
+            // impossible disparity --> very large cost
+            cost += wgt * (COST_ALPHA * TAU_CLR +
+              (1 - COST_ALPHA) * TAU_GRD);
+          } else {
+            // 1 - view --> other view
+#ifdef USE_INTER
+            const double other_x = INTER_SIZE * (q_x + (2 * view - 1) * q_disp);
+            const int inter_x = 
+              HandleBorder(static_cast<int>(other_x), inter_wid_);
+            const uchar* I_inter = I_inter_other_y + 3 * inter_x;
+            // interpolated color difference
+            int clr_diff =
+              abs(I_q[0] - I_inter[0]) +
+              abs(I_q[1] - I_inter[1]) +
+              abs(I_q[2] - I_inter[2]);
+            //int clr_diff =
+            //  (I_q[0] - I_inter[0]) +
+            //  (I_q[1] - I_inter[1]) +
+            //  (I_q[2] - I_inter[2]);
+            const double clr_cost = clr_diff * 0.33333333;
+            //const double clr_cost = 0.0;
+            const double G_inter = G_inter_other_y[inter_x];
+            // interpolated gradient difference
+            const double grd_cost = 
+              fabs(G_q_y[q_x] - G_inter);
+            //const double grd_cost = 
+            //  (G_q_y[q_x] - G_inter);
+#else
+            const double other_x = q_x + (2 * view - 1) * q_disp;
+            int floor_x = static_cast<int>(other_x);
+            int ceil_x = floor_x + 1;
+            const double floor_wgt = ceil_x - other_x;
+            floor_x = HandleBorder(floor_x, wid_);
+            ceil_x = HandleBorder(ceil_x, wid_);
+            const uchar* I_floor = I_ohter_y + 3 * floor_x;
+            const uchar* I_ceil = I_ohter_y + 3 * ceil_x;
+            // interpolated color difference
+            double clr_cost =
+              fabs(I_q[0] - I_ceil[0] + floor_wgt * (I_ceil[0] - I_floor[0])) +
+              fabs(I_q[1] - I_ceil[1] + floor_wgt * (I_ceil[1] - I_floor[1])) +
+              fabs(I_q[2] - I_ceil[2] + floor_wgt * (I_ceil[2] - I_floor[2]));
+            clr_cost *= 0.33333333333333;
+            const double G_floor = G_other_y[floor_x];
+            const double G_ceil = G_other_y[ceil_x];
+            // interpolated gradient difference
+            double grd_cost =
+              fabs(G_q_y[q_x] - G_ceil + floor_wgt * (G_ceil - G_floor));
+#endif
+            cost += wgt * (
+              COST_ALPHA * min(clr_cost, TAU_CLR) +
+              (1 - COST_ALPHA) * min(grd_cost, TAU_GRD));
+          }
+        } // end if q_x
+      } // end for dx
+    } // end if q_x
+  } // end for dy
   return cost;
 }
 

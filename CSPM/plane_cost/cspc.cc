@@ -32,6 +32,7 @@ CSPC::CSPC(const Mat& l_img, const Mat& r_img,
   wid_[0] = l_img.cols;
   max_disp_ = new int[scale_num_];
   max_disp_[0] = max_disp;
+  half_wnd_ = wnd_size_ / 2;
   for (int v = kLeft; v <= kRight; v = RefView(v + 1)) {
     lab_[v] = new Mat[scale_num_];
     grd_x_[v] = new Mat[scale_num_];
@@ -52,7 +53,7 @@ CSPC::CSPC(const Mat& l_img, const Mat& r_img,
       cvtColor(img_[v][s], gray, CV_BGR2GRAY);
       // X Gradient
       // sobel size must be 1
-      Sobel(gray, grd_x_[v][s], CV_16S, 1, 0, 1);
+      Sobel(gray, grd_x_[v][s], CV_64F, 1, 0, 1);
       // grd_x_[v] += 0.5;
     }
   }
@@ -115,29 +116,58 @@ double CSPC::GetPlaneCost(const int& ref_x, const int& ref_y,
     Plane cur_plane(org_norm, Point3d(cur_x, cur_y, cur_disp));
     Vec3d plane_param = cur_plane.param();
     double scale_cost = 0.0f;
+    const double plane_a = plane_param[0];
+    const double plane_b = plane_param[1];
+    const double plane_c = plane_param[2];
+    const uchar* I_p = img_[view][s].ptr<uchar>(cur_y) +3 * cur_x;
     for (int dy = -half_wnd; dy <= half_wnd; ++dy) {
-      int q_y = HandleBorder(cur_y + dy, hei_[s]);
-      for (int dx = -half_wnd; dx <= half_wnd; ++dx) {
-        int q_x = HandleBorder(cur_x + dx, wid_[s]);
-        const double wgt = 
-          GetCostWeight(cur_x, cur_y, q_x, q_y, view, s);
-        double q_disp = plane_param[0] * q_x +
-          plane_param[1] * q_y + plane_param[2];
-        if (q_disp <= 0.0 || q_disp >= max_disp_[s]) {
-          // impossible disparity --> largest cost
-          scale_cost += wgt * (COST_ALPHA * TAU_CLR +
-            (1 - COST_ALPHA) * TAU_GRD);
-        }
-        else {
-          //if (view == kLeft) {
-          //  other_x = q_x - q_disp;
-          //}
-          //else {
-          //  other_x = q_x + q_disp;
-          //}
-          const double other_x = q_x + (2 * view - 1) * q_disp;
-          scale_cost += wgt * 
-            GetPixelCost(q_x, q_y, other_x, q_y, view, s);
+      int q_y = cur_y + dy;
+      if (q_y >= 0 && q_y < hei_[s]) {
+        const uchar* I_q_y = img_[view][s].ptr<uchar>(q_y);
+        const double* G_q_y = grd_x_[view][s].ptr<double>(q_y);
+        const uchar* I_ohter_y = img_[1 - view][s].ptr<uchar>(q_y);
+        const double* G_other_y = grd_x_[1 - view][s].ptr<double>(q_y);
+        const double q_disp_y = plane_b * q_y + plane_c;
+
+        for (int dx = -half_wnd; dx <= half_wnd; ++dx) {
+          int q_x = cur_x + dx;
+          if (q_x >= 0 && q_x < wid_[s]) {
+            const uchar* I_q = I_q_y + 3 * q_x;
+            int sum = abs(I_p[0] - I_q[0]) +
+              abs(I_p[1] - I_q[1]) +
+              abs(I_p[2] - I_q[2]);
+            const double wgt = lookup_exp_[sum];
+            double q_disp = plane_a * q_x + q_disp_y;
+            int q_disp_floor = static_cast<int>(q_disp);
+            if (q_disp_floor <= 0 || q_disp_floor >= max_disp_[s]) {
+              // impossible disparity --> largest cost
+              scale_cost += wgt * (COST_ALPHA * TAU_CLR +
+                (1 - COST_ALPHA) * TAU_GRD);
+            } else {
+              const double other_x = q_x + (2 * view - 1) * q_disp;
+              int floor_x = static_cast<int>(other_x);
+              int ceil_x = floor_x + 1;
+              const double floor_wgt = ceil_x - other_x;
+              floor_x = HandleBorder(floor_x, wid_[s]);
+              ceil_x = HandleBorder(ceil_x, wid_[s]);
+              const uchar* I_floor = I_ohter_y + 3 * floor_x;
+              const uchar* I_ceil = I_ohter_y + 3 * ceil_x;
+              // interpolated color difference
+              double clr_cost =
+                fabs(I_q[0] - I_ceil[0] + floor_wgt * (I_ceil[0] - I_floor[0])) +
+                fabs(I_q[1] - I_ceil[1] + floor_wgt * (I_ceil[1] - I_floor[1])) +
+                fabs(I_q[2] - I_ceil[2] + floor_wgt * (I_ceil[2] - I_floor[2]));
+              clr_cost *= 0.33333333333333;
+              const double G_floor = G_other_y[floor_x];
+              const double G_ceil = G_other_y[ceil_x];
+              // interpolated gradient difference
+              double grd_cost =
+                fabs(G_q_y[q_x] - G_ceil + floor_wgt * (G_ceil - G_floor));
+              scale_cost += wgt * (
+                COST_ALPHA * min(clr_cost, TAU_CLR) +
+                (1 - COST_ALPHA) * min(grd_cost, TAU_GRD));
+            }
+          }
         }
       }
     }
