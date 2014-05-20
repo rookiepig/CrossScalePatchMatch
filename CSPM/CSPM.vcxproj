@@ -19,6 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="cc\cen_cc.h" />
+    <ClInclude Include="cc\grd_cc.h" />
+    <ClInclude Include="cc_method.h" />
     <ClInclude Include="commfunc.h" />
     <ClInclude Include="cs_patchmatch.h" />
     <ClInclude Include="ctmf.h" />
@@ -26,13 +29,20 @@
     <ClInclude Include="plane_cost\cspc.h" />
     <ClInclude Include="plane_cost\grd_pc.h" />
     <ClInclude Include="plane_cost\i_plane_cost.h" />
+    <ClInclude Include="plane_cost\pre_cs_pc.h" />
+    <ClInclude Include="plane_cost\pre_ss_pc.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="cc\cen_cc.cc" />
+    <ClCompile Include="cc\grd_cc.cpp" />
+    <ClCompile Include="commfunc.cc" />
     <ClCompile Include="cs_patchmatch.cc" />
     <ClCompile Include="ctmf.c" />
     <ClCompile Include="main.cc" />
     <ClCompile Include="plane_cost\cspc.cc" />
     <ClCompile Include="plane_cost\grd_pc.cc" />
+    <ClCompile Include="plane_cost\pre_cs_pc.cc" />
+    <ClCompile Include="plane_cost\pre_ss_pc.cc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{82EB6F4F-61A8-45F1-A1A2-1BE29DCCEC3E}</ProjectGuid>

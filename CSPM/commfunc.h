@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////
-// File: CommonFunc
+// File: commfunc.h
 // Desc: global functions, constants and headers
 //
 // Author: Zhang Kang
@@ -15,6 +15,8 @@
 #include<cstdlib>
 #include<gflags\gflags.h>
 #include<omp.h>
+#include<bitset>
+// C Header
 #include"ctmf.h"
 using namespace std;
 using namespace cv;
@@ -81,6 +83,10 @@ enum RefView{ kLeft = 0, kRight = 1 };
 #pragma comment( lib, "opencv_videostab248.lib" )
 #endif
 
+//
+// Global Functions
+//
+
 // output matrix
 template<class T>
 void PrintMat(const Mat& mat)
@@ -137,29 +143,28 @@ inline int HandleBorder(const int& loc, const int& size) {
   }
   return loc;
 }
-
-
-inline void MeanFilter(cv::InputArray iImage_, cv::OutputArray oImage_, int r) {
-  cv::Mat iImage = iImage_.getMat();
-  cv::Size imageSize = iImage.size();
-  CV_Assert(iImage.depth() == CV_8U);
-
-  cv::Mat tmp(imageSize, iImage.type());
-  ctmf(iImage.data, tmp.data, imageSize.width, imageSize.height,
-    iImage.step1(), tmp.step1(), r,
-    iImage.channels(), imageSize.area() * iImage.channels());
-
-  if (oImage_.getMat().size() != imageSize || oImage_.getMat().depth() != CV_8U || oImage_.getMat().type() != CV_8UC1) {
-    oImage_.create(imageSize, iImage.type());
-  }
-
-  tmp.copyTo(oImage_.getMat());
-}
-
 // handle image border macro
 //#define HANDLE_BORDER(loc, size) \
 //  ((loc) < 0 ? (loc)+(size) : \
 //  ((loc) >= (size) ? (loc)-(size) : (loc)))
 //
+
+// constant time median filter
+//inline void MedianFilter(cv::InputArray iImage_, cv::OutputArray oImage_, int r) {
+//  cv::Mat iImage = iImage_.getMat();
+//  cv::Size imageSize = iImage.size();
+//  CV_Assert(iImage.depth() == CV_8U);
+//
+//  cv::Mat tmp(imageSize, iImage.type());
+//  ctmf(iImage.data, tmp.data, imageSize.width, imageSize.height,
+//    iImage.step1(), tmp.step1(), r,
+//    iImage.channels(), imageSize.area() * iImage.channels());
+//
+//  if (oImage_.getMat().size() != imageSize || oImage_.getMat().depth() != CV_8U || oImage_.getMat().type() != CV_8UC1) {
+//    oImage_.create(imageSize, iImage.type());
+//  }
+//  tmp.copyTo(oImage_.getMat());
+//}
+
 // #define MY_DEBUG
 #define USE_OMP

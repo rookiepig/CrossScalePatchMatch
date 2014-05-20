@@ -1,23 +1,23 @@
---l_img_file="tsukuba_l.png" --r_img_file="tsukuba_r.png" --l_dis_file="tsukuba_ld.png" --r_dis_file="tsukuba_rd.png" --max_dis=16 --dis_scale=16 --use_pp=false
+--l_img_file="tsukuba_l.png" --r_img_file="tsukuba_r.png" --l_dis_file="tsukuba_ld.png" --r_dis_file="tsukuba_rd.png" --max_dis=16 --dis_scale=16 --cc_name="CEN" --use_cs=false --use_pp=true
 
---l_img_file="venus_l.png" --r_img_file="venus_r.png" --l_dis_file="venus_ld.png" --r_dis_file="venus_rd.png" --max_dis=20 --dis_scale=8 --use_pp=false
+--l_img_file="venus_l.png" --r_img_file="venus_r.png" --l_dis_file="venus_ld.png" --r_dis_file="venus_rd.png" --max_dis=20 --dis_scale=8 --cc_name="CEN" --use_cs=false --use_pp=true
 
---l_img_file="cones_l.png" --r_img_file="cones_r.png" --l_dis_file="cones_ld.png" --r_dis_file="cones_rd.png" --max_dis=60 --dis_scale=4 --use_pp=false
+--l_img_file="cones_l.png" --r_img_file="cones_r.png" --l_dis_file="cones_ld.png" --r_dis_file="cones_rd.png" --max_dis=60 --dis_scale=4 --cc_name="CEN" --use_cs=false --use_pp=true
 
---l_img_file="cut_cones_l.png" --r_img_file="cut_cones_r.png" --l_dis_file="cut_cones_ld.png" --r_dis_file="cut_cones_rd.png" --max_dis= --use_pp=false60 --dis_scale=4
+--l_img_file="cut_cones_l.png" --r_img_file="cut_cones_r.png" --l_dis_file="cut_cones_ld.png" --r_dis_file="cut_cones_rd.png" --max_dis= --cc_name="CEN" --use_cs=false --use_pp=true60 --dis_scale=4
 
---l_img_file="med_cones_l.png" --r_img_file="med_cones_r.png" --l_dis_file="med_cones_ld.png" --r_dis_file="med_cones_rd.png" --max_dis= --use_pp=false30 --dis_scale=8
+--l_img_file="med_cones_l.png" --r_img_file="med_cones_r.png" --l_dis_file="med_cones_ld.png" --r_dis_file="med_cones_rd.png" --max_dis= --cc_name="CEN" --use_cs=false --use_pp=true30 --dis_scale=8
 
---l_img_file="small_cones_l.png" --r_img_file="small_cones_r.png" --l_dis_file="small_cones_ld.png" --r_dis_file="small_cones_rd.png" -- --use_pp=falsemax_dis=15 --dis_scale=16
+--l_img_file="small_cones_l.png" --r_img_file="small_cones_r.png" --l_dis_file="small_cones_ld.png" --r_dis_file="small_cones_rd.png" -- --cc_name="CEN" --use_cs=false --use_pp=truemax_dis=15 --dis_scale=16
 
---l_img_file="teddy_l.png" --r_img_file="teddy_r.png" --l_dis_file="teddy_ld.png" --r_dis_file="teddy_rd.png" --max_dis=60 --dis_scale=4 --use_pp=false
+--l_img_file="teddy_l.png" --r_img_file="teddy_r.png" --l_dis_file="teddy_ld.png" --r_dis_file="teddy_rd.png" --max_dis=60 --dis_scale=4 --cc_name="CEN" --use_cs=false --use_pp=true
 
---l_img_file="cut_teddy_l.png" --r_img_file="cut_teddy_r.png" --l_dis_file="cut_teddy_ld.png" --r_dis_file="cut_teddy_rd.png" --max_dis=60 --dis_scale=4 --use_pp=false
+--l_img_file="cut_teddy_l.png" --r_img_file="cut_teddy_r.png" --l_dis_file="cut_teddy_ld.png" --r_dis_file="cut_teddy_rd.png" --max_dis=60 --dis_scale=4 --cc_name="CEN" --use_cs=false --use_pp=true
 
---l_img_file="small_teddy_l.png" --r_img_file="small_teddy_r.png" --l_dis_file="small_teddy_ld.png" --r_dis_file="small_teddy_rd.png" --max_dis=15 --dis_scale=16 --use_pp=false
-
-
---l_img_file="Reindeer_l.png" --r_img_file="Reindeer_r.png" --l_dis_file="Reindeer_ld.png" --r_dis_file="Reindeer_rd.png" --max_dis=80 --dis_scale=3 --use_pp=false
+--l_img_file="small_teddy_l.png" --r_img_file="small_teddy_r.png" --l_dis_file="small_teddy_ld.png" --r_dis_file="small_teddy_rd.png" --max_dis=15 --dis_scale=16 --cc_name="CEN" --use_cs=false --use_pp=true
 
 
---l_img_file="p0b1_l_3.png" --r_img_file="p0b1_r_3.png" --l_dis_file="p0b1_l_3.png" --r_dis_file="p0b1_r_3.png" --max_dis=16 --dis_scale=16 --use_pp=false
+--l_img_file="Reindeer_l.png" --r_img_file="Reindeer_r.png" --l_dis_file="Reindeer_ld.png" --r_dis_file="Reindeer_rd.png" --max_dis=80 --dis_scale=3 --cc_name="CEN" --use_cs=false --use_pp=true
+
+
+--l_img_file="p0b1_l_3.png" --r_img_file="p0b1_r_3.png" --l_dis_file="p0b1_l_3.png" --r_dis_file="p0b1_r_3.png" --max_dis=16 --dis_scale=16 --cc_name="CEN" --use_cs=false --use_pp=true

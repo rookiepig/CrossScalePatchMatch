@@ -16,6 +16,12 @@
     <Filter Include="plane_cost">
       <UniqueIdentifier>{3e604f0f-08b8-468d-9cda-9c1f30ed8d03}</UniqueIdentifier>
     </Filter>
+    <Filter Include="cc">
+      <UniqueIdentifier>{2766851f-5de6-43d0-94b4-dcb384595bdc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ca_filter">
+      <UniqueIdentifier>{4d901c35-fd9a-4016-8d67-e720c30dd14a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="commfunc.h">
@@ -36,8 +42,23 @@
     <ClInclude Include="plane_cost\cspc.h">
       <Filter>plane_cost</Filter>
     </ClInclude>
+    <ClInclude Include="cc_method.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cc\grd_cc.h">
+      <Filter>cc</Filter>
+    </ClInclude>
+    <ClInclude Include="cc\cen_cc.h">
+      <Filter>cc</Filter>
+    </ClInclude>
     <ClInclude Include="ctmf.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="plane_cost\pre_ss_pc.h">
+      <Filter>plane_cost</Filter>
+    </ClInclude>
+    <ClInclude Include="plane_cost\pre_cs_pc.h">
+      <Filter>plane_cost</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -53,8 +74,23 @@
     <ClCompile Include="plane_cost\cspc.cc">
       <Filter>plane_cost</Filter>
     </ClCompile>
+    <ClCompile Include="cc\grd_cc.cpp">
+      <Filter>cc</Filter>
+    </ClCompile>
+    <ClCompile Include="cc\cen_cc.cc">
+      <Filter>cc</Filter>
+    </ClCompile>
     <ClCompile Include="ctmf.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="commfunc.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="plane_cost\pre_ss_pc.cc">
+      <Filter>plane_cost</Filter>
+    </ClCompile>
+    <ClCompile Include="plane_cost\pre_cs_pc.cc">
+      <Filter>plane_cost</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

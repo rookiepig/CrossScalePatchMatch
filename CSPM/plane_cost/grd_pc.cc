@@ -65,7 +65,6 @@ GrdPC::GrdPC(const Mat& l_img, const Mat& r_img,
 }
 
 GrdPC::~GrdPC(void) {
-  // do nothing
   delete[] lookup_exp_;
 }
 

@@ -1,6 +1,5 @@
 #include "cs_patchmatch.h"
 
-
 CSPatchMatch::CSPatchMatch(const Mat& l_img, const Mat& r_img, 
   const int& max_dis, const int& dis_scale) :
   max_dis_(max_dis), dis_scale_(dis_scale) {
@@ -572,8 +571,8 @@ void CSPatchMatch::PostProcessing() {
   // divide l1 with 3? or not?
   WeightedMedian(valid, wnd_size, WMF_GAMMA);
   // normal median filter
-  MeanFilter(dis_[kLeft], dis_[kLeft], 2);
-  MeanFilter(dis_[kRight], dis_[kRight], 2);
+  //MyMedianFilter(dis_[kLeft], dis_[kLeft], 2);
+  //MyMedianFilter(dis_[kRight], dis_[kRight], 2);
 #ifdef VIEW_PP
   imshow("l_final", dis_[kLeft]);
   waitKey(-1);

@@ -12,6 +12,10 @@
 #include"cs_patchmatch.h"
 #include"plane_cost\grd_pc.h"
 #include"plane_cost\cspc.h"
+#include"plane_cost\pre_ss_pc.h"
+#include"plane_cost\pre_cs_pc.h"
+#include"cc\grd_cc.h"
+#include"cc\cen_cc.h"
 
 //
 // gflags commind line variables
@@ -24,7 +28,26 @@ DEFINE_string(r_dis_file, "r_dis.png",
   "output right disparity file name");
 DEFINE_int32(max_dis, 0, "max allowed disparity range");
 DEFINE_int32(dis_scale, 0, "disparity re-scaling factor");
+DEFINE_string(cc_name, "CCName", "cost function name");
+DEFINE_bool(use_cs, false, "enable cross-scale cost aggregation");
 DEFINE_bool(use_pp, false, "enable post-processing");
+
+// get cost compuation method name
+CCMethod* GetCCType(const string& name)
+{
+  if (name == "GRD") {
+    return new GrdCC();
+  }
+  else if (name == "CEN") {
+    return new CenCC();
+  }
+  else if (name == "BSM") {
+    return NULL;
+  }
+  else if (name == "CG") {
+    return NULL;
+  }
+}
 
 int main(int argc, char** argv) {
   cout << "PatchMatch Stereo Matching" << endl;
@@ -51,28 +74,39 @@ int main(int argc, char** argv) {
   //l_img.convertTo(l_img, CV_64F, 1 / 255.0f);
   //r_img.convertTo(r_img, CV_64F, 1 / 255.0f);
 
-  // init time
-  double duration = static_cast<double>(getTickCount());
-
-  //
-  // Patch Match
-  //
-  const int max_iter = 3;
-  CSPatchMatch* patch_match = new CSPatchMatch(l_img, r_img,
-    FLAGS_max_dis, FLAGS_dis_scale);
-  const int wnd_size = 35;
-
+  // paramters
   //const double alpha = 0.1;
   //const double tau_color = 10.0 / 255.0;
   //const double tau_grd   = 2.0  / 255.0;
   //const double gamma     = 10.0;
 
-  // GrdPC* plane_cost = new GrdPC(l_img, r_img, FLAGS_max_dis, wnd_size);
-  CSPC* plane_cost = new CSPC(l_img, r_img, FLAGS_max_dis, wnd_size, 5);
-  // , alpha, tau_color, tau_grd, gamma);
-  
-  patch_match->PatchMatch(max_iter, plane_cost, FLAGS_use_pp);
+  // get cost function
+  CCMethod* cc_cost = GetCCType(FLAGS_cc_name);
 
+  // init time
+  double duration = static_cast<double>(getTickCount());
+  const int max_iter = 3;
+  const int wnd_size = 35;
+  // get plane cost
+  IPlaneCost* plane_cost = NULL;
+  if (FLAGS_use_cs) {
+    // use multi-scale cost aggregation
+    const int scale_num = 5;
+    plane_cost = new PreCSPC(l_img, r_img, FLAGS_max_dis, wnd_size, 
+      scale_num, cc_cost);
+    // , alpha, tau_color, tau_grd, gamma);
+  }
+  else {
+    // single-scale cost aggregation
+    plane_cost =
+      new PreSSPC(l_img, r_img, FLAGS_max_dis, wnd_size, cc_cost);
+  }
+  CSPatchMatch* patch_match = new CSPatchMatch(l_img, r_img,
+    FLAGS_max_dis, FLAGS_dis_scale);
+  //
+  // Patch Match
+  //
+  patch_match->PatchMatch(max_iter, plane_cost, FLAGS_use_pp);
   // record time
   duration = static_cast<double>(getTickCount()) - duration;
   duration /= cv::getTickFrequency(); // the elapsed time in sec
