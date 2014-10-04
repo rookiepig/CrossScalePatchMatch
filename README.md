@@ -5,7 +5,7 @@ Cross-Scale Cost Aggregation for Stereo Matching (CVPR 2014 + PatchMatch stereo 
 ### Windows
 The code is a Visual Studio 2010 project on Windows x64 platform. To build the project, you need to configure [OpenCV](http://opencv.org/) (version 2.4.6, however, other versions are acceptable by modifying [commfunc.h](/CSPM/commfunc.h)) on your own PC. Besides, to parse command paramters, I adopted the [gflags](https://code.google.com/p/gflags/).
 ### Other Platforms
-The code requires no platform-dependent libraries. Thus, it is easy to compile it on other platforms with OpenCV.
+The code requires no platform-dependent libraries. Thus, it is easy to compile it on other platforms with OpenCV and gflags.
 
 ## Usage
 Since I adopted gflags, the parameters are totally changed. The following example can demonstrate how to run the original [PatchMatch](#PM) stereo algorithm:
@@ -26,6 +26,6 @@ Citation is very important for researchers. If you find this code useful, please
 }
 ```
 The PatchMatch stereo algorithm comes from the following paper:
-<a name="PM">[PM]</a>: M. Bleyer, C. Rhemann, and C. Rother, “PatchMatch stereo
-- stereo matching with slanted support windows,” in
+
+<a name="PM">[PM]</a>: M. Bleyer, C. Rhemann, and C. Rother, “PatchMatch stereo - stereo matching with slanted support windows,” in
 BMVC, 2011.
