@@ -14,13 +14,13 @@
 
 // 10 * 3 = 30 means divide color by 3
 #define WGT_GAMMA  10.0
-#define REG_LAMBDA 1
+// #define REG_LAMBDA 1
 
 class PreCSPC : public IPlaneCost {
  public:
    PreCSPC(const Mat& l_img, const Mat& r_img,
      const int& max_disp, const int& wnd_size,
-     const int& scale_num, CCMethod* cc_method);
+     const int& scale_num, CCMethod* cc_method, const double& reg_lambda);
      //const double& alpha,
      //const double& tau_clr, const double& tau_grd,
      //const double& gamma);

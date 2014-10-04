@@ -13,7 +13,7 @@
 #include<algorithm>
 #include<limits>
 #include<cstdlib>
-#include<gflags\gflags.h>
+#include<gflags/gflags.h>
 #include<omp.h>
 #include<bitset>
 // C Header

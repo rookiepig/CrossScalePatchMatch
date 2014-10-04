@@ -31,6 +31,9 @@ DEFINE_int32(dis_scale, 0, "disparity re-scaling factor");
 DEFINE_string(cc_name, "CCName", "cost function name");
 DEFINE_bool(use_cs, false, "enable cross-scale cost aggregation");
 DEFINE_bool(use_pp, false, "enable post-processing");
+DEFINE_double(reg_lambda, 0.0, "regularization lambda");
+// test scale number influence
+// DEFINE_int32(scale_num, 0, "the number of scale");
 
 // get cost compuation method name
 CCMethod* GetCCType(const string& name)
@@ -46,6 +49,8 @@ CCMethod* GetCCType(const string& name)
   }
   else if (name == "CG") {
     return NULL;
+  } else {
+	  return NULL;
   }
 }
 
@@ -91,10 +96,16 @@ int main(int argc, char** argv) {
   IPlaneCost* plane_cost = NULL;
   if (FLAGS_use_cs) {
     // use multi-scale cost aggregation
-    const int scale_num = 5;
-    plane_cost = new PreCSPC(l_img, r_img, FLAGS_max_dis, wnd_size, 
-      scale_num, cc_cost);
-    // , alpha, tau_color, tau_grd, gamma);
+    
+	  const int scale_num = 5;
+
+	  plane_cost = new PreCSPC(l_img, r_img, FLAGS_max_dis, wnd_size,
+      scale_num, cc_cost, FLAGS_reg_lambda);
+      // , alpha, tau_color, tau_grd, gamma);
+
+	//plane_cost = new CSPC(l_img, r_img, FLAGS_max_dis, wnd_size,
+	//	scale_num, FLAGS_reg_lambda);
+	//// , alpha, tau_color, tau_grd, gamma);
   }
   else {
     // single-scale cost aggregation
