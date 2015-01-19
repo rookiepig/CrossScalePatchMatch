@@ -1,4 +1,4 @@
-Cross-Scale Cost Aggregation for Stereo Matching (CVPR 2014 + PatchMatch stereo submit to TPAMI)
+Cross-Scale Cost Aggregation for Stereo Matching (CVPR 2014 extension submit to IJCV)
 ================
 
 ## Compilation
