@@ -1,4 +1,4 @@
-Cross-Scale Cost Aggregation for Stereo Matching (CVPR 2014 extension submit to IJCV)
+Cross-Scale Cost Aggregation for Stereo Matching (CVPR 2014 extension submit to TCSVT)
 ================
 
 ## Compilation
