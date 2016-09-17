@@ -1,4 +1,4 @@
-Cross-Scale Cost Aggregation for Stereo Matching (CVPR 2014 extension submit to TCSVT)
+Cross-Scale Cost Aggregation for Stereo Matching (CVPR 2014 extension accepted by TCSVT)
 ================
 
 ## Compilation
@@ -23,6 +23,13 @@ Citation is very important for researchers. If you find this code useful, please
         title     = {Cross-Scale Cost Aggregation for Stereo Matching},
         booktitle = {CVPR},
         year     = {2014}
+}
+
+@inproceedings{CrossScaleStereo,
+        author    = {Kang Zhang and Yuqiang Fang  and Dongbo Min and Lifeng Sun and Shiqiang Yang  and Shuicheng Yan},
+        title     = {Cross-Scale Cost Aggregation for Stereo Matching},
+        booktitle = {IEEE Transactions on Circuits and Systems for Video Technology},
+        year     = {2015}
 }
 ```
 The PatchMatch stereo algorithm comes from the following paper:
